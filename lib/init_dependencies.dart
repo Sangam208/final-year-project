@@ -1,0 +1,67 @@
+import 'package:bus_tracker/core/config/secrets.dart';
+import 'package:bus_tracker/core/cubits/app_user/app_user_cubit.dart';
+import 'package:bus_tracker/features/auth/data/datasource/auth_remote_data_source.dart';
+import 'package:bus_tracker/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:bus_tracker/features/auth/domain/repositories/auth_repository.dart';
+import 'package:bus_tracker/features/auth/domain/usecases/current_user.dart';
+import 'package:bus_tracker/features/auth/domain/usecases/user_send_otp.dart';
+import 'package:bus_tracker/features/auth/domain/usecases/user_verify_otp.dart';
+import 'package:bus_tracker/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:get_it/get_it.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+final serviceLocator = GetIt.instance;
+
+Future<void> initDepedencies() async {
+  final supabase = await Supabase.initialize(
+    url: projectURI,
+    anonKey: anonKey,
+  );
+
+  serviceLocator
+    ..registerLazySingleton(
+      () => supabase.client,
+    )
+    ..registerLazySingleton(
+      () => AppUserCubit(),
+    );
+
+  _initAuth();
+}
+
+void _initAuth() {
+  serviceLocator
+    ..registerFactory<AuthRemoteDataSource>(
+      () => AuthRemoteDataSourceImpl(
+        serviceLocator(),
+      ),
+    )
+    ..registerFactory<AuthRepository>(
+      () => AuthRepositoryImpl(
+        serviceLocator(),
+      ),
+    )
+    ..registerFactory(
+      () => UserSendOTP(
+        serviceLocator(),
+      ),
+    )
+    ..registerFactory(
+      () => UserVerifyOtp(
+        serviceLocator(),
+      ),
+    )
+    ..registerFactory(
+      () => CurrentUser(
+        serviceLocator(),
+      ),
+    )
+    ..registerLazySingleton(
+      () => AuthBloc(
+        userSendOTP: serviceLocator(),
+        userVerifyOtp: serviceLocator(),
+        appUserCubit: serviceLocator(),
+        currentUser: serviceLocator(),
+      ),
+    );
+}
