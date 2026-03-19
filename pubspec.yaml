@@ -41,6 +41,15 @@ dependencies:
   fluttertoast: ^9.0.0
   get_it: ^9.2.1
 
+  # The following are essential for smooth map integration via OpenStreetMap
+  flutter_map: ^8.2.2
+  geolocator: ^14.0.2
+  latlong2: ^0.9.1
+  location: ^8.0.1
+  flutter_polyline_points: ^2.1.0
+  flutter_map_location_marker: ^10.2.0
+  dio: ^5.9.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -6,12 +6,22 @@ class AppTheme {
 
   static Color kWhiteColor = Colors.white;
   static Color kBlackColor = Colors.black;
+  static Color kBlueColor = Colors.blue;
+  static Color kRedColor = Colors.red;
 
   static ThemeData themeData = ThemeData(
     textTheme: TextTheme(
       bodyMedium: TextStyle(
         fontSize: 18.0,
       ),
+      titleMedium: TextStyle(
+        fontSize: 32,
+        fontWeight: FontWeight.bold,
+        color: kWhiteColor,
+      ),
+    ),
+    appBarTheme: AppBarTheme(
+      backgroundColor: Color.fromRGBO(36, 149, 255, 1),
     ),
   );
 }

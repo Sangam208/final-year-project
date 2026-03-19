@@ -2,7 +2,7 @@ import 'package:bus_tracker/core/cubits/app_user/app_user_cubit.dart';
 import 'package:bus_tracker/core/theme/app_theme.dart';
 import 'package:bus_tracker/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:bus_tracker/features/auth/presentation/screens/auth_screen.dart';
-import 'package:bus_tracker/features/auth/presentation/screens/home_screen.dart';
+import 'package:bus_tracker/features/map/presentation/screens/map_screen.dart';
 import 'package:bus_tracker/init_dependencies.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -54,7 +54,7 @@ class _MyAppState extends State<MyApp> {
         },
         builder: (context, isLoggedIn) {
           if (isLoggedIn) {
-            return const HomeScreen();
+            return const MapScreen();
           }
           return const AuthScreen();
         },
