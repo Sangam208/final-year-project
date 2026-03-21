@@ -1,0 +1,39 @@
+import 'package:bus_tracker/core/errors/exception.dart';
+import 'package:bus_tracker/core/errors/failure.dart';
+import 'package:bus_tracker/features/map/data/datasources/map_remote_data_source.dart';
+import 'package:bus_tracker/features/map/domain/entities/route_entity.dart';
+import 'package:bus_tracker/features/map/domain/repositories/map_repository.dart';
+import 'package:fpdart/fpdart.dart';
+import 'package:latlong2/latlong.dart';
+
+class MapRepositoryImpl implements MapRepository {
+  final MapRemoteDataSource _mapRemoteDataSource;
+  MapRepositoryImpl(this._mapRemoteDataSource);
+
+  @override
+  Future<Either<Failure, LatLng>> getCoordinates({
+    required String query,
+  }) async {
+    try {
+      final res = await _mapRemoteDataSource.getCoordinates(query: query);
+      if (res == null) return left(Failure('Location not found'));
+      return right(res);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
+    }
+  }
+
+  @override
+  Future<Either<Failure, RouteEntity>> getRoute({
+    required LatLng start,
+    required LatLng end,
+  }) async {
+    try {
+      final res = await _mapRemoteDataSource.getRoute(start: start, end: end);
+      if (res == null) return left(Failure('Failed to fetch route'));
+      return right(res);
+    } on ServerException catch (e) {
+      return left(Failure(e.message));
+    }
+  }
+}

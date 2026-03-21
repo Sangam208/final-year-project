@@ -2,6 +2,8 @@ import 'package:bus_tracker/core/cubits/app_user/app_user_cubit.dart';
 import 'package:bus_tracker/core/theme/app_theme.dart';
 import 'package:bus_tracker/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:bus_tracker/features/auth/presentation/screens/auth_screen.dart';
+import 'package:bus_tracker/features/map/presentation/cubit/map/map_cubit.dart';
+import 'package:bus_tracker/features/map/presentation/cubit/user_location/user_location_cubit.dart';
 import 'package:bus_tracker/features/map/presentation/screens/map_screen.dart';
 import 'package:bus_tracker/init_dependencies.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +23,12 @@ void main() async {
         ),
         BlocProvider(
           create: (context) => serviceLocator<AuthBloc>(),
+        ),
+        BlocProvider(
+          create: (context) => serviceLocator<UserLocationCubit>(),
+        ),
+        BlocProvider(
+          create: (context) => serviceLocator<MapCubit>(),
         ),
       ],
       child: const MyApp(),
