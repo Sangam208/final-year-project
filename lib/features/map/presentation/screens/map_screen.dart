@@ -110,7 +110,8 @@ class _MapScreenState extends State<MapScreen> {
                   // Polyline Layer
                   if (currentLocation != null &&
                       mapState is MapLoaded &&
-                      mapState.route.isNotEmpty)
+                      mapState.route.isNotEmpty &&
+                      mapState.showRoute)
                     PolylineLayer(
                       polylines: [
                         Polyline(
@@ -162,9 +163,67 @@ class _MapScreenState extends State<MapScreen> {
                           vertical: 12,
                         ),
                       ),
-                      onSubmitted: (location) => context
-                          .read<MapCubit>()
-                          .searchDestination(location.trim()),
+                      onSubmitted: (location) {
+                        context.read<MapCubit>().searchDestination(
+                          location.trim(),
+                        );
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          builder: (context) => DraggableScrollableSheet(
+                            initialChildSize: 0.45,
+                            minChildSize: 0.35,
+                            maxChildSize: 0.7,
+                            expand: false,
+                            builder: (context, scrollController) => SizedBox(
+                              child: Padding(
+                                padding: const EdgeInsets.all(10.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Available Buses',
+                                      textAlign: TextAlign.center,
+                                      style:
+                                          Theme.of(
+                                            context,
+                                          ).textTheme.titleMedium!.copyWith(
+                                            color: AppTheme.kBlackColor,
+                                          ),
+                                    ),
+                                    Expanded(
+                                      child: ListView.builder(
+                                        itemCount: 2,
+                                        itemBuilder:
+                                            (BuildContext context, int index) {
+                                              return ListTile(
+                                                leading: const Icon(
+                                                  Icons.directions_bus_sharp,
+                                                ),
+                                                title: Text('Bus $index'),
+                                                subtitle: Text(
+                                                  '12 min • Low crowd',
+                                                ),
+                                                trailing: const Icon(
+                                                  Icons.arrow_forward_ios,
+                                                ),
+                                                onTap: () {
+                                                  context
+                                                      .read<MapCubit>()
+                                                      .confirmRouteSelection();
+                                                  Navigator.pop(context);
+                                                },
+                                              );
+                                            },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ),

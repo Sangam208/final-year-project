@@ -16,23 +16,23 @@ final class MapFailure extends MapState {
 final class MapLoaded extends MapState {
   final LatLng? destination;
   final List<LatLng> route;
-  final bool isLoading;
+  final bool showRoute;
 
   MapLoaded({
     this.destination,
     this.route = const [],
-    this.isLoading = false,
+    this.showRoute = false,
   });
 
   MapLoaded copyWith({
     LatLng? destination,
     List<LatLng>? route,
-    bool? isLoading,
+    bool? showRoute,
   }) {
     return MapLoaded(
       destination: destination ?? this.destination,
       route: route ?? this.route,
-      isLoading: isLoading ?? this.isLoading,
+      showRoute: showRoute ?? this.showRoute,
     );
   }
 }

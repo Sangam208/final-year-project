@@ -37,9 +37,6 @@ class MapCubit extends Cubit<MapState> {
       return;
     }
 
-    final currentState = state;
-    if (currentState is! MapLoaded) return;
-    emit(currentState.copyWith(isLoading: true));
     final res = await _mapRepository.getRoute(
       start: locationState.location!,
       end: destination,
@@ -50,9 +47,15 @@ class MapCubit extends Cubit<MapState> {
         MapLoaded(
           destination: destination,
           route: r.polylinePoints,
-          isLoading: false,
         ),
       ),
     );
+  }
+
+  void confirmRouteSelection() {
+    final currentState = state;
+    if (currentState is MapLoaded) {
+      emit(currentState.copyWith(showRoute: true));
+    }
   }
 }
