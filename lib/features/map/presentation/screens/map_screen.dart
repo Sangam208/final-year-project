@@ -18,9 +18,16 @@ class MapScreen extends StatefulWidget {
   State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
+class _MapScreenState extends State<MapScreen>
+    with SingleTickerProviderStateMixin {
   final MapController _mapController = MapController();
   final TextEditingController _destinationController = TextEditingController();
+
+  late AnimationController _animationController;
+  late Animation<double> _animation;
+  int _busIndex = 0;
+
+  MapLoaded? mapState;
 
   void _userCurrentLocation() {
     final locationState = context.read<UserLocationCubit>().state;
@@ -32,7 +39,29 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(
+        seconds: 100,
+      ), // Change this to make bus faster/slower
+    );
+
+    _animation = Tween<double>(begin: 0, end: 1).animate(_animationController)
+      ..addListener(() {
+        setState(() {
+          if (mapState != null && mapState!.route.isNotEmpty) {
+            _busIndex = (_animation.value * (mapState!.route.length - 1))
+                .floor();
+          }
+        });
+      });
+  }
+
+  @override
   void dispose() {
+    _animationController.dispose();
     _mapController.dispose();
     _destinationController.dispose();
     super.dispose();
@@ -47,15 +76,23 @@ class _MapScreenState extends State<MapScreen> {
             showToast(state.message);
           }
         },
-        builder: (context, mapState) {
+        builder: (context, state) {
+          mapState = state is MapLoaded ? state : null;
           final locationState = context.watch<UserLocationCubit>().state;
           final currentLocation = locationState is UserLocationLoaded
               ? locationState.location
               : null;
-          if (currentLocation != null && mapState is MapInitial) {
+          if (currentLocation != null && state is MapInitial) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _mapController.move(currentLocation, 15.0);
             });
+          }
+          // Start bus animation when user selects a bus
+          if (mapState?.showRoute == true &&
+              mapState?.route.isNotEmpty == true) {
+            if (!_animationController.isAnimating) {
+              _animationController.forward();
+            }
           }
           return Stack(
             children: [
@@ -91,11 +128,11 @@ class _MapScreenState extends State<MapScreen> {
                   ),
 
                   // Destination Marker
-                  if (mapState is MapLoaded && mapState.destination != null)
+                  if (mapState is MapLoaded && mapState?.destination != null)
                     MarkerLayer(
                       markers: [
                         Marker(
-                          point: mapState.destination!,
+                          point: mapState!.destination!,
                           width: 50,
                           height: 50,
                           child: Icon(
@@ -110,14 +147,31 @@ class _MapScreenState extends State<MapScreen> {
                   // Polyline Layer
                   if (currentLocation != null &&
                       mapState is MapLoaded &&
-                      mapState.route.isNotEmpty &&
-                      mapState.showRoute)
+                      mapState?.route.isNotEmpty == true &&
+                      mapState?.showRoute == true)
                     PolylineLayer(
                       polylines: [
                         Polyline(
-                          points: mapState.route,
+                          points: mapState!.route,
                           strokeWidth: 5.0,
                           color: AppTheme.kRedColor,
+                        ),
+                      ],
+                    ),
+
+                  // Moving Bus Icon
+                  if (mapState?.showRoute == true &&
+                      mapState?.route.isNotEmpty == true &&
+                      _busIndex < mapState!.route.length)
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: mapState!.route[_busIndex],
+                          child: const Icon(
+                            Icons.directions_bus_filled_outlined,
+                            size: 30,
+                            color: Colors.green,
+                          ),
                         ),
                       ],
                     ),
@@ -181,38 +235,44 @@ class _MapScreenState extends State<MapScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      'Available Buses',
-                                      textAlign: TextAlign.center,
-                                      style:
-                                          Theme.of(
-                                            context,
-                                          ).textTheme.titleMedium!.copyWith(
-                                            color: AppTheme.kBlackColor,
-                                          ),
+                                    Center(
+                                      child: Text(
+                                        'Available Buses',
+                                        style:
+                                            Theme.of(
+                                              context,
+                                            ).textTheme.titleMedium!.copyWith(
+                                              color: AppTheme.kBlackColor,
+                                            ),
+                                      ),
                                     ),
+
+                                    const Divider(),
+
                                     Expanded(
                                       child: ListView.builder(
                                         itemCount: 2,
                                         itemBuilder:
                                             (BuildContext context, int index) {
-                                              return ListTile(
-                                                leading: const Icon(
-                                                  Icons.directions_bus_sharp,
+                                              return Card(
+                                                child: ListTile(
+                                                  leading: const Icon(
+                                                    Icons.directions_bus_sharp,
+                                                  ),
+                                                  title: Text('Bus $index'),
+                                                  subtitle: Text(
+                                                    '12 min • Low crowd',
+                                                  ),
+                                                  trailing: const Icon(
+                                                    Icons.arrow_forward_ios,
+                                                  ),
+                                                  onTap: () {
+                                                    context
+                                                        .read<MapCubit>()
+                                                        .confirmRouteSelection();
+                                                    Navigator.pop(context);
+                                                  },
                                                 ),
-                                                title: Text('Bus $index'),
-                                                subtitle: Text(
-                                                  '12 min • Low crowd',
-                                                ),
-                                                trailing: const Icon(
-                                                  Icons.arrow_forward_ios,
-                                                ),
-                                                onTap: () {
-                                                  context
-                                                      .read<MapCubit>()
-                                                      .confirmRouteSelection();
-                                                  Navigator.pop(context);
-                                                },
                                               );
                                             },
                                       ),
