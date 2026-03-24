@@ -59,11 +59,19 @@ class MapCubit extends Cubit<MapState> {
     }
   }
 
-  // Called when user taps a bus in the bottom sheet
   void startBusTracking() {
     final currentState = state;
-    if (currentState is MapLoaded && currentState.route.isNotEmpty) {
-      emit(currentState.copyWith(showRoute: true));
+    if (currentState is MapLoaded) {
+      emit(currentState.copyWith(isTracking: true));
+    }
+  }
+
+  void stopBusTracking() {
+    final currentState = state;
+    if (currentState is MapLoaded) {
+      emit(
+        currentState.copyWith(isTracking: false, showRoute: false, route: []),
+      );
     }
   }
 }

@@ -28,6 +28,8 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
           'format': 'json',
           'limit': '1',
           'countrycodes': 'np',
+          'viewbox': '85.25,27.65,85.40,27.75', // Kathmandu bounding box
+          'bounded': '1',
         },
       );
 

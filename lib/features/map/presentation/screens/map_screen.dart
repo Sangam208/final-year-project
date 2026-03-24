@@ -26,6 +26,26 @@ class _MapScreenState extends State<MapScreen>
   late AnimationController _animationController;
   late Animation<double> _animation;
   int _busIndex = 0;
+  final List<Map<String, dynamic>> _buses = [
+    {
+      'name': 'Fast Bus',
+      'time': '10 min',
+      'crowd': 'Low crowd',
+      'color': Colors.blue,
+    },
+    {
+      'name': 'Regular Bus',
+      'time': '18 min',
+      'crowd': 'Medium crowd',
+      'color': Colors.orange,
+    },
+    {
+      'name': 'Economy Bus',
+      'time': '25 min',
+      'crowd': 'High crowd',
+      'color': Colors.green,
+    },
+  ];
 
   MapLoaded? mapState;
 
@@ -44,7 +64,7 @@ class _MapScreenState extends State<MapScreen>
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(
-        seconds: 100,
+        seconds: 30,
       ), // Change this to make bus faster/slower
     );
 
@@ -87,6 +107,7 @@ class _MapScreenState extends State<MapScreen>
               _mapController.move(currentLocation, 15.0);
             });
           }
+
           // Start bus animation when user selects a bus
           if (mapState?.showRoute == true &&
               mapState?.route.isNotEmpty == true) {
@@ -94,6 +115,7 @@ class _MapScreenState extends State<MapScreen>
               _animationController.forward();
             }
           }
+
           return Stack(
             children: [
               FlutterMap(
@@ -101,7 +123,7 @@ class _MapScreenState extends State<MapScreen>
                 options: MapOptions(
                   initialCenter:
                       currentLocation ?? const LatLng(27.7172, 85.3240),
-                  initialZoom: 15.0,
+                  initialZoom: mapState?.showRoute == true ? 13.0 : 16.0,
                   minZoom: 0,
                   maxZoom: 18,
                 ),
@@ -128,7 +150,9 @@ class _MapScreenState extends State<MapScreen>
                   ),
 
                   // Destination Marker
-                  if (mapState is MapLoaded && mapState?.destination != null)
+                  if (mapState is MapLoaded &&
+                      mapState?.destination != null &&
+                      mapState?.route.isNotEmpty == true)
                     MarkerLayer(
                       markers: [
                         Marker(
@@ -162,7 +186,8 @@ class _MapScreenState extends State<MapScreen>
                   // Moving Bus Icon
                   if (mapState?.showRoute == true &&
                       mapState?.route.isNotEmpty == true &&
-                      _busIndex < mapState!.route.length)
+                      _busIndex < mapState!.route.length &&
+                      mapState?.isTracking == true)
                     MarkerLayer(
                       markers: [
                         Marker(
@@ -235,8 +260,8 @@ class _MapScreenState extends State<MapScreen>
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Center(
-                                      child: Text(
+                                    ListTile(
+                                      title: Text(
                                         'Available Buses',
                                         style:
                                             Theme.of(
@@ -245,25 +270,42 @@ class _MapScreenState extends State<MapScreen>
                                               color: AppTheme.kBlackColor,
                                             ),
                                       ),
+                                      subtitle: Text(
+                                        'Heading To ${_destinationController.text.trim()}',
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.bodyMedium,
+                                      ),
                                     ),
 
                                     const Divider(),
 
                                     Expanded(
                                       child: ListView.builder(
-                                        itemCount: 2,
+                                        itemCount: _buses.length,
                                         itemBuilder:
                                             (BuildContext context, int index) {
+                                              final busName =
+                                                  _buses[index]['name'];
+                                              final busTime =
+                                                  _buses[index]['time'];
+                                              final crowdLevel =
+                                                  _buses[index]['crowd'];
+                                              final busColor =
+                                                  _buses[index]['color']
+                                                      as Color;
+
                                               return Card(
                                                 child: ListTile(
-                                                  leading: const Icon(
+                                                  leading: Icon(
                                                     Icons.directions_bus_sharp,
+                                                    color: busColor,
                                                   ),
-                                                  title: Text('Bus $index'),
+                                                  title: Text(busName),
                                                   subtitle: Text(
-                                                    '12 min • Low crowd',
+                                                    '$busTime • $crowdLevel',
                                                   ),
-                                                  trailing: const Icon(
+                                                  trailing: Icon(
                                                     Icons.arrow_forward_ios,
                                                   ),
                                                   onTap: () {
@@ -288,6 +330,77 @@ class _MapScreenState extends State<MapScreen>
                   ),
                 ),
               ),
+
+              if (mapState is MapLoaded &&
+                  mapState?.route.isNotEmpty == true &&
+                  mapState?.showRoute == true)
+                Positioned(
+                  bottom: 30,
+                  left: 16,
+                  right: 16,
+                  child: GestureDetector(
+                    onTap: () {
+                      if (mapState?.isTracking == false) {
+                        context.read<MapCubit>().startBusTracking();
+                      } else {
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text(
+                              'Stop Tracking?',
+                              style: Theme.of(context).textTheme.bodyMedium!
+                                  .copyWith(
+                                    fontSize: 25,
+                                  ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: Text('No'),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  context.read<MapCubit>().stopBusTracking();
+                                  _destinationController.clear();
+                                  Navigator.pop(context);
+                                },
+                                child: Text('Yes'),
+                              ),
+                            ],
+                            content: Text(
+                              'Are you sure you want to stop tracking this bus?',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    child: Container(
+                      height: 60,
+                      width: 60,
+                      decoration: BoxDecoration(
+                        color: mapState?.isTracking == true
+                            ? const Color.fromARGB(255, 247, 107, 97)
+                            : AppTheme.kBlueColor,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 8,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        mapState?.isTracking == true
+                            ? Icons.stop
+                            : Icons.power_settings_new,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           );
         },

@@ -17,22 +17,26 @@ final class MapLoaded extends MapState {
   final LatLng? destination;
   final List<LatLng> route;
   final bool showRoute;
+  final bool isTracking;
 
   MapLoaded({
     this.destination,
     this.route = const [],
     this.showRoute = false,
+    this.isTracking = false,
   });
 
   MapLoaded copyWith({
     LatLng? destination,
     List<LatLng>? route,
     bool? showRoute,
+    bool? isTracking,
   }) {
     return MapLoaded(
       destination: destination ?? this.destination,
       route: route ?? this.route,
       showRoute: showRoute ?? this.showRoute,
+      isTracking: isTracking ?? this.isTracking,
     );
   }
 }
