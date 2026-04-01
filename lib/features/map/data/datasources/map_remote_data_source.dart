@@ -1,12 +1,16 @@
 import 'package:bus_tracker/core/errors/exception.dart';
+import 'package:bus_tracker/features/map/data/models/crowd_data_model.dart';
 import 'package:bus_tracker/features/map/data/models/route_model.dart';
+import 'package:csv/csv.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:latlong2/latlong.dart';
 
 abstract interface class MapRemoteDataSource {
   Future<LatLng?> getCoordinates({required String query});
   Future<RouteModel?> getRoute({required LatLng start, required LatLng end});
+  Future<List<CrowdDataModel>?> loadCrowdData();
 }
 
 class MapRemoteDataSourceImpl implements MapRemoteDataSource {
@@ -77,6 +81,28 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
         return RouteModel(start: start, end: end, polylinePoints: route);
       }
       return null;
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<List<CrowdDataModel>?> loadCrowdData() async {
+    try {
+      // Loading CSV string
+      final String csvString = await rootBundle.loadString(
+        'assets/data/crowd_data.csv',
+      );
+
+      if (csvString.isEmpty) return null;
+
+      // Converting Csv string to list of rows
+      final List<List<dynamic>> csvTable = csv.decode(csvString);
+
+      // Skip header row
+      final dataRows = csvTable.skip(1).toList();
+
+      return dataRows.map((row) => CrowdDataModel.fromCsvRow(row)).toList();
     } catch (e) {
       throw ServerException(e.toString());
     }

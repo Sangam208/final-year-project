@@ -40,3 +40,8 @@ final class MapLoaded extends MapState {
     );
   }
 }
+
+final class MapCrowdData extends MapState {
+  final List<CrowdData> crowdData;
+  MapCrowdData(this.crowdData);
+}

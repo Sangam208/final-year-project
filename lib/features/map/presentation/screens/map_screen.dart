@@ -26,6 +26,7 @@ class _MapScreenState extends State<MapScreen>
   late AnimationController _animationController;
   late Animation<double> _animation;
   int _busIndex = 0;
+
   final List<Map<String, dynamic>> _buses = [
     {
       'name': 'Fast Bus',
@@ -47,6 +48,8 @@ class _MapScreenState extends State<MapScreen>
     },
   ];
 
+  String? predictedCrowdLevel;
+
   MapLoaded? mapState;
 
   void _userCurrentLocation() {
@@ -61,19 +64,23 @@ class _MapScreenState extends State<MapScreen>
   @override
   void initState() {
     super.initState();
+    context.read<MapCubit>().loadCrowdData();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(
-        seconds: 30,
-      ), // Change this to make bus faster/slower
+      duration: const Duration(seconds: 25), // reasonable speed for testing
     );
 
     _animation = Tween<double>(begin: 0, end: 1).animate(_animationController)
       ..addListener(() {
         setState(() {
-          if (mapState != null && mapState!.route.isNotEmpty) {
-            _busIndex = (_animation.value * (mapState!.route.length - 1))
-                .floor();
+          if (mapState != null &&
+              mapState!.route.isNotEmpty &&
+              mapState!.isTracking) {
+            final totalPoints = mapState!.route.length - 1;
+            _busIndex = (_animation.value * totalPoints).floor().clamp(
+              0,
+              totalPoints,
+            );
           }
         });
       });
@@ -98,22 +105,30 @@ class _MapScreenState extends State<MapScreen>
         },
         builder: (context, state) {
           mapState = state is MapLoaded ? state : null;
+
           final locationState = context.watch<UserLocationCubit>().state;
           final currentLocation = locationState is UserLocationLoaded
               ? locationState.location
               : null;
+
           if (currentLocation != null && state is MapInitial) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _mapController.move(currentLocation, 15.0);
             });
           }
 
-          // Start bus animation when user selects a bus
-          if (mapState?.showRoute == true &&
-              mapState?.route.isNotEmpty == true) {
-            if (!_animationController.isAnimating) {
-              _animationController.forward();
-            }
+          // Start animation when tracking begins
+          if (mapState?.isTracking == true &&
+              !_animationController.isAnimating) {
+            _animationController.forward();
+          }
+
+          Color color = Colors.yellow;
+          if (predictedCrowdLevel == "Low") {
+            color = Colors.green;
+          }
+          if (predictedCrowdLevel == "High") {
+            color = Colors.red;
           }
 
           return Stack(
@@ -134,7 +149,6 @@ class _MapScreenState extends State<MapScreen>
                     subdomains: const ['a', 'b', 'c', 'd'],
                   ),
 
-                  // Current User Location Marker
                   CurrentLocationLayer(
                     style: LocationMarkerStyle(
                       marker: DefaultLocationMarker(
@@ -149,7 +163,6 @@ class _MapScreenState extends State<MapScreen>
                     ),
                   ),
 
-                  // Destination Marker
                   if (mapState is MapLoaded &&
                       mapState?.destination != null &&
                       mapState?.route.isNotEmpty == true)
@@ -168,7 +181,6 @@ class _MapScreenState extends State<MapScreen>
                       ],
                     ),
 
-                  // Polyline Layer
                   if (currentLocation != null &&
                       mapState is MapLoaded &&
                       mapState?.route.isNotEmpty == true &&
@@ -183,18 +195,18 @@ class _MapScreenState extends State<MapScreen>
                       ],
                     ),
 
-                  // Moving Bus Icon
+                  // Moving Bus Icon - starts from beginning of route
                   if (mapState?.showRoute == true &&
                       mapState?.route.isNotEmpty == true &&
-                      _busIndex < mapState!.route.length &&
-                      mapState?.isTracking == true)
+                      mapState?.isTracking == true &&
+                      _busIndex < mapState!.route.length)
                     MarkerLayer(
                       markers: [
                         Marker(
                           point: mapState!.route[_busIndex],
                           child: const Icon(
                             Icons.directions_bus_filled_outlined,
-                            size: 30,
+                            size: 20,
                             color: Colors.green,
                           ),
                         ),
@@ -203,7 +215,124 @@ class _MapScreenState extends State<MapScreen>
                 ],
               ),
 
-              // Destination TextField Overlay (Top Center)
+              // Info card
+              if (mapState?.isTracking == true)
+                Positioned(
+                  top: 120,
+                  left: 16,
+                  right: 16,
+                  child: Card(
+                    elevation: 6,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.directions_bus,
+                                color: Colors.green,
+                                size: 28,
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Fast Bus',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              // ETA (dummy for now)
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'ETA',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  const Text(
+                                    '~8 min',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              // Distance from bus to you (dummy for now)
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Distance',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  const Text(
+                                    '~420 m',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              // Crowd Level - NOW DYNAMIC with KNN
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Crowd',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.shade500,
+                                      borderRadius: BorderRadius.circular(
+                                        20,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      predictedCrowdLevel!,
+                                      style: TextStyle(
+                                        color: color,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+              // Destination TextField Overlay
               Positioned(
                 top: 40,
                 left: 16,
@@ -263,10 +392,10 @@ class _MapScreenState extends State<MapScreen>
                                     ListTile(
                                       title: Text(
                                         'Available Buses',
-                                        style:
-                                            Theme.of(
-                                              context,
-                                            ).textTheme.titleMedium!.copyWith(
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium!
+                                            .copyWith(
                                               color: AppTheme.kBlackColor,
                                             ),
                                       ),
@@ -277,46 +406,35 @@ class _MapScreenState extends State<MapScreen>
                                         ).textTheme.bodyMedium,
                                       ),
                                     ),
-
                                     const Divider(),
-
                                     Expanded(
                                       child: ListView.builder(
                                         itemCount: _buses.length,
-                                        itemBuilder:
-                                            (BuildContext context, int index) {
-                                              final busName =
-                                                  _buses[index]['name'];
-                                              final busTime =
-                                                  _buses[index]['time'];
-                                              final crowdLevel =
-                                                  _buses[index]['crowd'];
-                                              final busColor =
-                                                  _buses[index]['color']
-                                                      as Color;
+                                        itemBuilder: (context, index) {
+                                          final bus = _buses[index];
+                                          return Card(
+                                            child: ListTile(
+                                              leading: Icon(
+                                                Icons.directions_bus_sharp,
+                                                color: bus['color'] as Color,
+                                              ),
+                                              title: Text(bus['name']),
+                                              subtitle: Text(
+                                                '${bus['time']} • ${bus['crowd']}',
+                                              ),
+                                              trailing: const Icon(
+                                                Icons.arrow_forward_ios,
+                                              ),
+                                              onTap: () {
+                                                context
+                                                    .read<MapCubit>()
+                                                    .confirmRouteSelection();
 
-                                              return Card(
-                                                child: ListTile(
-                                                  leading: Icon(
-                                                    Icons.directions_bus_sharp,
-                                                    color: busColor,
-                                                  ),
-                                                  title: Text(busName),
-                                                  subtitle: Text(
-                                                    '$busTime • $crowdLevel',
-                                                  ),
-                                                  trailing: Icon(
-                                                    Icons.arrow_forward_ios,
-                                                  ),
-                                                  onTap: () {
-                                                    context
-                                                        .read<MapCubit>()
-                                                        .confirmRouteSelection();
-                                                    Navigator.pop(context);
-                                                  },
-                                                ),
-                                              );
-                                            },
+                                                Navigator.pop(context);
+                                              },
+                                            ),
+                                          );
+                                        },
                                       ),
                                     ),
                                   ],
@@ -331,32 +449,36 @@ class _MapScreenState extends State<MapScreen>
                 ),
               ),
 
-              if (mapState is MapLoaded &&
-                  mapState?.route.isNotEmpty == true &&
-                  mapState?.showRoute == true)
+              // Tracker button
+              if (mapState?.showRoute == true)
                 Positioned(
                   bottom: 30,
                   left: 16,
                   right: 16,
                   child: GestureDetector(
                     onTap: () {
+                      predictedCrowdLevel = context
+                          .read<MapCubit>()
+                          .predictCrowdLevel(
+                            hour: 15,
+                            dayOfWeek: 6,
+                            distanceKm: 6,
+                            routeId: 1,
+                          );
                       if (mapState?.isTracking == false) {
                         context.read<MapCubit>().startBusTracking();
                       } else {
                         showDialog(
                           context: context,
                           builder: (context) => AlertDialog(
-                            title: Text(
-                              'Stop Tracking?',
-                              style: Theme.of(context).textTheme.bodyMedium!
-                                  .copyWith(
-                                    fontSize: 25,
-                                  ),
+                            title: const Text('Stop Tracking?'),
+                            content: const Text(
+                              'Are you sure you want to stop tracking this bus?',
                             ),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(context),
-                                child: Text('No'),
+                                child: const Text('No'),
                               ),
                               TextButton(
                                 onPressed: () {
@@ -364,13 +486,9 @@ class _MapScreenState extends State<MapScreen>
                                   _destinationController.clear();
                                   Navigator.pop(context);
                                 },
-                                child: Text('Yes'),
+                                child: const Text('Yes'),
                               ),
                             ],
-                            content: Text(
-                              'Are you sure you want to stop tracking this bus?',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
                           ),
                         );
                       }
@@ -380,11 +498,11 @@ class _MapScreenState extends State<MapScreen>
                       width: 60,
                       decoration: BoxDecoration(
                         color: mapState?.isTracking == true
-                            ? const Color.fromARGB(255, 247, 107, 97)
+                            ? Colors.red
                             : AppTheme.kBlueColor,
                         shape: BoxShape.circle,
                         boxShadow: [
-                          BoxShadow(
+                          const BoxShadow(
                             color: Colors.black26,
                             blurRadius: 8,
                             offset: Offset(0, 4),
@@ -408,10 +526,7 @@ class _MapScreenState extends State<MapScreen>
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppTheme.kBlueColor,
         onPressed: _userCurrentLocation,
-        child: Icon(
-          Icons.my_location,
-          color: AppTheme.kWhiteColor,
-        ),
+        child: Icon(Icons.my_location, color: AppTheme.kWhiteColor),
       ),
     );
   }
