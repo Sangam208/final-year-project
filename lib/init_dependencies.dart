@@ -4,6 +4,7 @@ import 'package:bus_tracker/features/auth/data/datasource/auth_remote_data_sourc
 import 'package:bus_tracker/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:bus_tracker/features/auth/domain/repositories/auth_repository.dart';
 import 'package:bus_tracker/features/auth/domain/usecases/current_user.dart';
+import 'package:bus_tracker/features/auth/domain/usecases/user_logout.dart';
 import 'package:bus_tracker/features/auth/domain/usecases/user_send_otp.dart';
 import 'package:bus_tracker/features/auth/domain/usecases/user_verify_otp.dart';
 import 'package:bus_tracker/features/auth/presentation/bloc/auth_bloc.dart';
@@ -66,12 +67,18 @@ void _initAuth() {
         serviceLocator(),
       ),
     )
+    ..registerFactory(
+      () => UserLogout(
+        serviceLocator(),
+      ),
+    )
     ..registerLazySingleton(
       () => AuthBloc(
         userSendOTP: serviceLocator(),
         userVerifyOtp: serviceLocator(),
         appUserCubit: serviceLocator(),
         currentUser: serviceLocator(),
+        userLogOut: serviceLocator(),
       ),
     );
 }

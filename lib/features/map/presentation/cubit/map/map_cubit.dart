@@ -55,10 +55,10 @@ class MapCubit extends Cubit<MapState> {
     );
   }
 
-  void confirmRouteSelection() {
+  void confirmRouteSelection(Map<String, dynamic> selectedBus) {
     final currentState = state;
     if (currentState is MapLoaded) {
-      emit(currentState.copyWith(showRoute: true));
+      emit(currentState.copyWith(showRoute: true, selectedBus: selectedBus));
     }
   }
 
@@ -73,7 +73,12 @@ class MapCubit extends Cubit<MapState> {
     final currentState = state;
     if (currentState is MapLoaded) {
       emit(
-        currentState.copyWith(isTracking: false, showRoute: false, route: []),
+        currentState.copyWith(
+          isTracking: false,
+          showRoute: false,
+          route: [],
+          selectedBus: null,
+        ),
       );
     }
   }
@@ -85,9 +90,7 @@ class MapCubit extends Cubit<MapState> {
       (l) => emit(MapFailure(l.message)),
       (r) {
         if (r == null) return;
-
         crowdDataList = r;
-        emit(MapCrowdData(r));
       },
     );
   }

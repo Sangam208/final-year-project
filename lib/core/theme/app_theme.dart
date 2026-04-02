@@ -8,6 +8,8 @@ class AppTheme {
   static Color kBlackColor = Colors.black;
   static Color kBlueColor = Colors.blue;
   static Color kRedColor = Colors.red;
+  static Color kGreenColor = Colors.green;
+  static Color kOrangeColor = const Color.fromARGB(255, 255, 186, 59);
 
   static ThemeData themeData = ThemeData(
     textTheme: TextTheme(

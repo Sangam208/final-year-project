@@ -18,12 +18,14 @@ final class MapLoaded extends MapState {
   final List<LatLng> route;
   final bool showRoute;
   final bool isTracking;
+  final Map<String, dynamic>? selectedBus;
 
   MapLoaded({
     this.destination,
     this.route = const [],
     this.showRoute = false,
     this.isTracking = false,
+    this.selectedBus,
   });
 
   MapLoaded copyWith({
@@ -31,17 +33,14 @@ final class MapLoaded extends MapState {
     List<LatLng>? route,
     bool? showRoute,
     bool? isTracking,
+    Map<String, dynamic>? selectedBus,
   }) {
     return MapLoaded(
       destination: destination ?? this.destination,
       route: route ?? this.route,
       showRoute: showRoute ?? this.showRoute,
       isTracking: isTracking ?? this.isTracking,
+      selectedBus: selectedBus ?? this.selectedBus,
     );
   }
-}
-
-final class MapCrowdData extends MapState {
-  final List<CrowdData> crowdData;
-  MapCrowdData(this.crowdData);
 }

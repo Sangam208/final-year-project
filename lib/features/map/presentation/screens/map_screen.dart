@@ -1,7 +1,10 @@
+import 'dart:math';
+
 import 'package:bus_tracker/core/theme/app_theme.dart';
 import 'package:bus_tracker/core/utils/show_toast.dart';
 import 'package:bus_tracker/features/map/presentation/cubit/map/map_cubit.dart';
 import 'package:bus_tracker/features/map/presentation/cubit/user_location/user_location_cubit.dart';
+import 'package:bus_tracker/features/map/presentation/widgets/app_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -30,25 +33,32 @@ class _MapScreenState extends State<MapScreen>
   final List<Map<String, dynamic>> _buses = [
     {
       'name': 'Fast Bus',
-      'time': '10 min',
-      'crowd': 'Low crowd',
+      'time': 10,
       'color': Colors.blue,
+      'hour': 9,
+      'dayOfWeek': 6,
+      'distanceKm': 4.5,
+      'routeId': 1,
     },
     {
       'name': 'Regular Bus',
-      'time': '18 min',
-      'crowd': 'Medium crowd',
+      'time': 18,
       'color': Colors.orange,
+      'hour': 10,
+      'dayOfWeek': 6,
+      'distanceKm': 7.2,
+      'routeId': 2,
     },
     {
       'name': 'Economy Bus',
-      'time': '25 min',
-      'crowd': 'High crowd',
+      'time': 25,
       'color': Colors.green,
+      'hour': 11,
+      'dayOfWeek': 6,
+      'distanceKm': 12.0,
+      'routeId': 3,
     },
   ];
-
-  String? predictedCrowdLevel;
 
   MapLoaded? mapState;
 
@@ -67,7 +77,7 @@ class _MapScreenState extends State<MapScreen>
     context.read<MapCubit>().loadCrowdData();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 25), // reasonable speed for testing
+      duration: const Duration(seconds: 35), // reasonable speed for testing
     );
 
     _animation = Tween<double>(begin: 0, end: 1).animate(_animationController)
@@ -81,9 +91,29 @@ class _MapScreenState extends State<MapScreen>
               0,
               totalPoints,
             );
+            if (_busIndex >= totalPoints) {
+              Future.delayed(Duration(milliseconds: 800), () {
+                if (mounted) {
+                  context.read<MapCubit>().stopBusTracking();
+                  _destinationController.clear();
+                }
+              });
+            }
           }
         });
       });
+  }
+
+  double _calculateBearing(LatLng start, LatLng end) {
+    final lat1 = start.latitude * pi / 180;
+    final lat2 = end.latitude * pi / 180;
+    final dLon = (end.longitude - start.longitude) * pi / 180;
+
+    final y = sin(dLon) * cos(lat2);
+    final x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon);
+    final bearing = atan2(y, x);
+
+    return bearing; // in radians (Transform.rotate expects radians)
   }
 
   @override
@@ -102,6 +132,37 @@ class _MapScreenState extends State<MapScreen>
           if (state is MapFailure) {
             showToast(state.message);
           }
+          // Start animation when tracking begins
+          if (state is MapLoaded) {
+            if (state.showRoute && state.route.isNotEmpty) {
+              final locationState = context.read<UserLocationCubit>().state;
+              final currentLocation = locationState is UserLocationLoaded
+                  ? locationState.location
+                  : null;
+
+              if (currentLocation != null) {
+                final bounds = LatLngBounds.fromPoints(state.route);
+                Future.delayed(Duration(milliseconds: 300), () {
+                  _mapController.fitCamera(
+                    CameraFit.bounds(
+                      bounds: bounds,
+                      padding: EdgeInsets.all(50.0),
+                    ),
+                  );
+                });
+              }
+            }
+
+            if (state.isTracking == true && !_animationController.isAnimating) {
+              _animationController.forward();
+            }
+
+            // reset bus index and animation controller when tracker is stopped
+            if (state.isTracking == false) {
+              _busIndex = 0;
+              _animationController.reset();
+            }
+          }
         },
         builder: (context, state) {
           mapState = state is MapLoaded ? state : null;
@@ -115,20 +176,6 @@ class _MapScreenState extends State<MapScreen>
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _mapController.move(currentLocation, 15.0);
             });
-          }
-
-          // Start animation when tracking begins
-          if (mapState?.isTracking == true &&
-              !_animationController.isAnimating) {
-            _animationController.forward();
-          }
-
-          Color color = Colors.yellow;
-          if (predictedCrowdLevel == "Low") {
-            color = Colors.green;
-          }
-          if (predictedCrowdLevel == "High") {
-            color = Colors.red;
           }
 
           return Stack(
@@ -149,6 +196,7 @@ class _MapScreenState extends State<MapScreen>
                     subdomains: const ['a', 'b', 'c', 'd'],
                   ),
 
+                  // Current location marker
                   CurrentLocationLayer(
                     style: LocationMarkerStyle(
                       marker: DefaultLocationMarker(
@@ -163,6 +211,7 @@ class _MapScreenState extends State<MapScreen>
                     ),
                   ),
 
+                  // Destination marker
                   if (mapState is MapLoaded &&
                       mapState?.destination != null &&
                       mapState?.route.isNotEmpty == true)
@@ -181,6 +230,7 @@ class _MapScreenState extends State<MapScreen>
                       ],
                     ),
 
+                  // Polyline layer
                   if (currentLocation != null &&
                       mapState is MapLoaded &&
                       mapState?.route.isNotEmpty == true &&
@@ -189,25 +239,39 @@ class _MapScreenState extends State<MapScreen>
                       polylines: [
                         Polyline(
                           points: mapState!.route,
-                          strokeWidth: 5.0,
+                          strokeWidth: 8.0,
+                          borderStrokeWidth: 2.5,
+                          borderColor: AppTheme.kWhiteColor,
                           color: AppTheme.kRedColor,
+                          useStrokeWidthInMeter: true,
                         ),
                       ],
                     ),
 
-                  // Moving Bus Icon - starts from beginning of route
+                  // Moving Bus Icon
                   if (mapState?.showRoute == true &&
                       mapState?.route.isNotEmpty == true &&
                       mapState?.isTracking == true &&
-                      _busIndex < mapState!.route.length)
+                      _busIndex < mapState!.route.length - 1)
                     MarkerLayer(
                       markers: [
                         Marker(
                           point: mapState!.route[_busIndex],
-                          child: const Icon(
-                            Icons.directions_bus_filled_outlined,
-                            size: 20,
-                            color: Colors.green,
+                          width: 40,
+                          height: 40,
+                          child: Transform.rotate(
+                            angle:
+                                _calculateBearing(
+                                  mapState!.route[_busIndex],
+                                  mapState!.route[_busIndex + 1],
+                                ) +
+                                pi +
+                                (pi / 4),
+                            child: Image.asset(
+                              'assets/images/bus_icon.png',
+                              width: 30,
+                              height: 30,
+                            ),
                           ),
                         ),
                       ],
@@ -233,14 +297,14 @@ class _MapScreenState extends State<MapScreen>
                         children: [
                           Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.directions_bus,
-                                color: Colors.green,
+                                color: mapState?.selectedBus?['color'],
                                 size: 28,
                               ),
                               const SizedBox(width: 12),
-                              const Text(
-                                'Fast Bus',
+                              Text(
+                                mapState?.selectedBus?['name'] ?? 'Unavailable',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -263,8 +327,8 @@ class _MapScreenState extends State<MapScreen>
                                       color: Colors.grey,
                                     ),
                                   ),
-                                  const Text(
-                                    '~8 min',
+                                  Text(
+                                    '~${mapState?.selectedBus?['time']} min',
                                     style: TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
@@ -283,8 +347,8 @@ class _MapScreenState extends State<MapScreen>
                                       color: Colors.grey,
                                     ),
                                   ),
-                                  const Text(
-                                    '~420 m',
+                                  Text(
+                                    '~${mapState?.selectedBus?['distanceKm']} m',
                                     style: TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
@@ -309,15 +373,22 @@ class _MapScreenState extends State<MapScreen>
                                       vertical: 6,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.orange.shade500,
+                                      color:
+                                          mapState?.selectedBus?['crowdLevel'] ==
+                                              'Low'
+                                          ? AppTheme.kGreenColor
+                                          : mapState?.selectedBus?['crowdLevel'] ==
+                                                'High'
+                                          ? AppTheme.kRedColor
+                                          : AppTheme.kOrangeColor,
                                       borderRadius: BorderRadius.circular(
                                         20,
                                       ),
                                     ),
                                     child: Text(
-                                      predictedCrowdLevel!,
+                                      mapState?.selectedBus?['crowdLevel'],
                                       style: TextStyle(
-                                        color: color,
+                                        color: AppTheme.kWhiteColor,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -337,115 +408,146 @@ class _MapScreenState extends State<MapScreen>
                 top: 40,
                 left: 16,
                 right: 16,
-                child: Card(
-                  color: AppTheme.kWhiteColor,
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(3.0),
-                    child: TextField(
-                      controller: _destinationController,
-                      decoration: InputDecoration(
-                        hintText: 'Enter destination location',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide.none,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Card(
+                        color: AppTheme.kWhiteColor,
+                        elevation: 4,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            width: 2.0,
-                            color: AppTheme.kBlueColor,
-                          ),
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                      ),
-                      onSubmitted: (location) {
-                        context.read<MapCubit>().searchDestination(
-                          location.trim(),
-                        );
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          builder: (context) => DraggableScrollableSheet(
-                            initialChildSize: 0.45,
-                            minChildSize: 0.35,
-                            maxChildSize: 0.7,
-                            expand: false,
-                            builder: (context, scrollController) => SizedBox(
-                              child: Padding(
-                                padding: const EdgeInsets.all(10.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    ListTile(
-                                      title: Text(
-                                        'Available Buses',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleMedium!
-                                            .copyWith(
-                                              color: AppTheme.kBlackColor,
-                                            ),
-                                      ),
-                                      subtitle: Text(
-                                        'Heading To ${_destinationController.text.trim()}',
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.bodyMedium,
-                                      ),
-                                    ),
-                                    const Divider(),
-                                    Expanded(
-                                      child: ListView.builder(
-                                        itemCount: _buses.length,
-                                        itemBuilder: (context, index) {
-                                          final bus = _buses[index];
-                                          return Card(
-                                            child: ListTile(
-                                              leading: Icon(
-                                                Icons.directions_bus_sharp,
-                                                color: bus['color'] as Color,
-                                              ),
-                                              title: Text(bus['name']),
-                                              subtitle: Text(
-                                                '${bus['time']} • ${bus['crowd']}',
-                                              ),
-                                              trailing: const Icon(
-                                                Icons.arrow_forward_ios,
-                                              ),
-                                              onTap: () {
-                                                context
-                                                    .read<MapCubit>()
-                                                    .confirmRouteSelection();
-
-                                                Navigator.pop(context);
-                                              },
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ],
+                        child: Padding(
+                          padding: const EdgeInsets.all(3.0),
+                          child: TextField(
+                            controller: _destinationController,
+                            decoration: InputDecoration(
+                              hintText: 'Enter destination location',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide.none,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(
+                                  width: 2.0,
+                                  color: AppTheme.kBlueColor,
                                 ),
                               ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
                             ),
+                            onSubmitted: (location) {
+                              for (var bus in _buses) {
+                                bus['crowdLevel'] = context
+                                    .read<MapCubit>()
+                                    .predictCrowdLevel(
+                                      hour: bus['hour'] as int,
+                                      dayOfWeek: bus['dayOfWeek'] as int,
+                                      distanceKm: bus['distanceKm'] as double,
+                                      routeId: bus['routeId'] as int,
+                                    );
+                              }
+                              context.read<MapCubit>().searchDestination(
+                                location.trim(),
+                              );
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                builder: (context) => DraggableScrollableSheet(
+                                  initialChildSize: 0.45,
+                                  minChildSize: 0.35,
+                                  maxChildSize: 0.7,
+                                  expand: false,
+                                  builder: (context, scrollController) => SizedBox(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(10.0),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          ListTile(
+                                            title: Text(
+                                              'Available Buses',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleMedium!
+                                                  .copyWith(
+                                                    color: AppTheme.kBlackColor,
+                                                  ),
+                                            ),
+                                            subtitle: Text(
+                                              'Heading To ${_destinationController.text.trim()}',
+                                              style: Theme.of(
+                                                context,
+                                              ).textTheme.bodyMedium,
+                                            ),
+                                          ),
+                                          const Divider(),
+                                          Expanded(
+                                            child: ListView.builder(
+                                              itemCount: _buses.length,
+                                              itemBuilder: (context, index) {
+                                                final bus = _buses[index];
+                                                return Card(
+                                                  child: ListTile(
+                                                    leading: Icon(
+                                                      Icons
+                                                          .directions_bus_sharp,
+                                                      color:
+                                                          bus['color'] as Color,
+                                                    ),
+                                                    title: Text(bus['name']),
+                                                    subtitle: Text(
+                                                      '${bus['time']} min • ${bus['crowdLevel']} crowd',
+                                                    ),
+                                                    trailing: const Icon(
+                                                      Icons.arrow_forward_ios,
+                                                    ),
+                                                    onTap: () {
+                                                      context
+                                                          .read<MapCubit>()
+                                                          .confirmRouteSelection(
+                                                            bus,
+                                                          );
+
+                                                      Navigator.pop(context);
+                                                    },
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      },
+                        ),
+                      ),
                     ),
-                  ),
+
+                    // Menu button to open end drawer
+                    IconButton(
+                      onPressed: () => Scaffold.of(context).openEndDrawer(),
+                      icon: Icon(
+                        Icons.menu,
+                        color: AppTheme.kBlackColor,
+                        size: 28.0,
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
@@ -457,14 +559,6 @@ class _MapScreenState extends State<MapScreen>
                   right: 16,
                   child: GestureDetector(
                     onTap: () {
-                      predictedCrowdLevel = context
-                          .read<MapCubit>()
-                          .predictCrowdLevel(
-                            hour: 15,
-                            dayOfWeek: 6,
-                            distanceKm: 6,
-                            routeId: 1,
-                          );
                       if (mapState?.isTracking == false) {
                         context.read<MapCubit>().startBusTracking();
                       } else {
@@ -523,6 +617,7 @@ class _MapScreenState extends State<MapScreen>
           );
         },
       ),
+      endDrawer: AppDrawer(),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppTheme.kBlueColor,
         onPressed: _userCurrentLocation,

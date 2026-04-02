@@ -16,3 +16,5 @@ final class AuthVerifyOTP extends AuthEvent {
 }
 
 final class AuthCurrentUser extends AuthEvent {}
+
+final class AuthLogOut extends AuthEvent {}
