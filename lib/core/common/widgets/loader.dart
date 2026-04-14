@@ -1,4 +1,3 @@
-import 'package:bus_tracker/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
 class Loader extends StatelessWidget {
@@ -6,9 +5,9 @@ class Loader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return const Center(
       child: CircularProgressIndicator(
-        color: AppTheme.kWhiteColor,
+        color: Colors.white,
       ),
     );
   }

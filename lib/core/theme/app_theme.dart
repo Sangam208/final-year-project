@@ -10,14 +10,18 @@ class AppTheme {
   static Color kRedColor = Colors.red;
   static Color kGreenColor = Colors.green;
   static Color kOrangeColor = const Color.fromARGB(255, 255, 186, 59);
+  static Color kAuthColor = const Color.fromARGB(255, 102, 221, 106);
 
   static ThemeData themeData = ThemeData(
     textTheme: TextTheme(
       bodyMedium: TextStyle(
         fontSize: 18.0,
+        fontFamily: 'Lato',
+        fontWeight: FontWeight.bold,
       ),
       titleMedium: TextStyle(
         fontSize: 32,
+        fontFamily: 'Lato',
         fontWeight: FontWeight.bold,
         color: kWhiteColor,
       ),

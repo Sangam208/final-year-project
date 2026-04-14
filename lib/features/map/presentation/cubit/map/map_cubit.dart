@@ -22,6 +22,7 @@ class MapCubit extends Cubit<MapState> {
 
   void searchDestination(String query) async {
     emit(MapLoading());
+
     final res = await _mapRepository.getCoordinates(query: query);
     res.fold(
       (l) => emit(MapFailure(l.message)),
@@ -39,6 +40,8 @@ class MapCubit extends Cubit<MapState> {
       emit(MapFailure('Current location not available'));
       return;
     }
+
+    emit(MapLoading());
 
     final res = await _mapRepository.getRoute(
       start: locationState.location!,

@@ -1,10 +1,11 @@
 import 'dart:math';
 
+import 'package:bus_tracker/core/common/widgets/loader.dart';
 import 'package:bus_tracker/core/theme/app_theme.dart';
 import 'package:bus_tracker/core/utils/show_toast.dart';
 import 'package:bus_tracker/features/map/presentation/cubit/map/map_cubit.dart';
 import 'package:bus_tracker/features/map/presentation/cubit/user_location/user_location_cubit.dart';
-import 'package:bus_tracker/features/map/presentation/widgets/app_drawer.dart';
+import 'package:bus_tracker/core/common/widgets/app_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -29,6 +30,10 @@ class _MapScreenState extends State<MapScreen>
   late AnimationController _animationController;
   late Animation<double> _animation;
   int _busIndex = 0;
+
+  final Distance _distanceCalculator = const Distance();
+  double _currentDistance = 0.0;
+  String _eta = '~'; // fallback
 
   final List<Map<String, dynamic>> _buses = [
     {
@@ -83,21 +88,39 @@ class _MapScreenState extends State<MapScreen>
     _animation = Tween<double>(begin: 0, end: 1).animate(_animationController)
       ..addListener(() {
         setState(() {
-          if (mapState != null &&
-              mapState!.route.isNotEmpty &&
-              mapState!.isTracking) {
-            final totalPoints = mapState!.route.length - 1;
-            _busIndex = (_animation.value * totalPoints).floor().clamp(
-              0,
-              totalPoints,
-            );
-            if (_busIndex >= totalPoints) {
-              Future.delayed(Duration(milliseconds: 800), () {
-                if (mounted) {
-                  context.read<MapCubit>().stopBusTracking();
-                  _destinationController.clear();
-                }
-              });
+          final userState = context.read<UserLocationCubit>().state;
+          if (userState is UserLocationLoaded && userState.location != null) {
+            if (mapState != null &&
+                mapState!.route.isNotEmpty &&
+                mapState!.isTracking) {
+              // Bus index update
+              final totalPoints = mapState!.route.length - 1;
+              _busIndex = (_animation.value * totalPoints).floor().clamp(
+                0,
+                totalPoints,
+              );
+              if (_busIndex >= totalPoints) {
+                Future.delayed(Duration(milliseconds: 800), () {
+                  if (mounted) {
+                    context.read<MapCubit>().stopBusTracking();
+                    _destinationController.clear();
+                  }
+                });
+              }
+
+              final destination = mapState!.destination ?? mapState!.route.last;
+
+              // Live distance update and ETA calculation
+              _currentDistance = _distanceCalculator.distance(
+                mapState!.route[_busIndex],
+                destination,
+              );
+
+              const double avgBusSpeedKmh = 25.0;
+              final timeHours = _currentDistance / 1000 / avgBusSpeedKmh;
+              final timeMins = (timeHours * 60).round();
+
+              _eta = timeMins > 0 ? '~$timeMins min' : 'Arriving...';
             }
           }
         });
@@ -328,7 +351,7 @@ class _MapScreenState extends State<MapScreen>
                                     ),
                                   ),
                                   Text(
-                                    '~${mapState?.selectedBus?['time']} min',
+                                    _eta,
                                     style: TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
@@ -348,7 +371,7 @@ class _MapScreenState extends State<MapScreen>
                                     ),
                                   ),
                                   Text(
-                                    '~${mapState?.selectedBus?['distanceKm']} m',
+                                    '~${(_currentDistance / 1000).toStringAsFixed(1)} km',
                                     style: TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
@@ -493,38 +516,48 @@ class _MapScreenState extends State<MapScreen>
                                           ),
                                           const Divider(),
                                           Expanded(
-                                            child: ListView.builder(
-                                              itemCount: _buses.length,
-                                              itemBuilder: (context, index) {
-                                                final bus = _buses[index];
-                                                return Card(
-                                                  child: ListTile(
-                                                    leading: Icon(
-                                                      Icons
-                                                          .directions_bus_sharp,
-                                                      color:
-                                                          bus['color'] as Color,
-                                                    ),
-                                                    title: Text(bus['name']),
-                                                    subtitle: Text(
-                                                      '${bus['time']} min • ${bus['crowdLevel']} crowd',
-                                                    ),
-                                                    trailing: const Icon(
-                                                      Icons.arrow_forward_ios,
-                                                    ),
-                                                    onTap: () {
-                                                      context
-                                                          .read<MapCubit>()
-                                                          .confirmRouteSelection(
-                                                            bus,
-                                                          );
+                                            child: state is MapLoading
+                                                ? const Loader()
+                                                : ListView.builder(
+                                                    itemCount: _buses.length,
+                                                    itemBuilder: (context, index) {
+                                                      final bus = _buses[index];
+                                                      return Card(
+                                                        child: ListTile(
+                                                          leading: Icon(
+                                                            Icons
+                                                                .directions_bus_sharp,
+                                                            color:
+                                                                bus['color']
+                                                                    as Color,
+                                                          ),
+                                                          title: Text(
+                                                            bus['name'],
+                                                          ),
+                                                          subtitle: Text(
+                                                            '$_eta • ${bus['crowdLevel']} crowd',
+                                                          ),
+                                                          trailing: const Icon(
+                                                            Icons
+                                                                .arrow_forward_ios,
+                                                          ),
+                                                          onTap: () {
+                                                            context
+                                                                .read<
+                                                                  MapCubit
+                                                                >()
+                                                                .confirmRouteSelection(
+                                                                  bus,
+                                                                );
 
-                                                      Navigator.pop(context);
+                                                            Navigator.pop(
+                                                              context,
+                                                            );
+                                                          },
+                                                        ),
+                                                      );
                                                     },
                                                   ),
-                                                );
-                                              },
-                                            ),
                                           ),
                                         ],
                                       ),
