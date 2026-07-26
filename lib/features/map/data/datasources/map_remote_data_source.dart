@@ -18,6 +18,8 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
   MapRemoteDataSourceImpl(this._dio) {
     _dio.options.headers['User-Agent'] =
         'BusTrackerApp/1.0 (Flutter) - Academic Project - sangam.dhital72@gmail.com';
+    _dio.options.connectTimeout = const Duration(seconds: 12);
+    _dio.options.receiveTimeout = const Duration(seconds: 15);
   }
 
   @override
@@ -39,6 +41,7 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
 
       if (response.statusCode == 200) {
         final coordinatesData = List<Map<String, dynamic>>.from(response.data);
+        if (coordinatesData.isEmpty) return null;
 
         // Extract latitude and longitude from response
         final lat = double.parse(coordinatesData[0]['lat']);
@@ -59,7 +62,7 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
   }) async {
     try {
       final response = await _dio.get(
-        "http://router.project-osrm.org/route/v1/driving/"
+        "https://router.project-osrm.org/route/v1/driving/"
         '${start.longitude},${start.latitude};'
         '${end.longitude},${end.latitude}?overview=full&geometries=polyline',
       );
@@ -67,7 +70,10 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
       if (response.statusCode == 200) {
         final geometryData = Map<String, dynamic>.from(response.data);
 
-        final encodedPolyline = geometryData['routes'][0]['geometry'] as String;
+        final routes = geometryData['routes'] as List?;
+        if (routes == null || routes.isEmpty) return null;
+        final encodedPolyline = (routes.first as Map<String, dynamic>)['geometry'] as String?;
+        if (encodedPolyline == null || encodedPolyline.isEmpty) return null;
         PolylinePoints polylinePoints = PolylinePoints();
         List<PointLatLng> decodedPoints = polylinePoints.decodePolyline(
           encodedPolyline,
@@ -78,7 +84,7 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
               (point) => LatLng(point.latitude, point.longitude),
             )
             .toList();
-        return RouteModel(start: start, end: end, polylinePoints: route);
+        return route.isEmpty ? null : RouteModel(start: start, end: end, polylinePoints: route);
       }
       return null;
     } catch (e) {

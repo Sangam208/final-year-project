@@ -305,11 +305,12 @@ class _MapScreenState extends State<MapScreen>
               // Info card
               if (mapState?.isTracking == true)
                 Positioned(
-                  top: 120,
+                  top: 124,
                   left: 16,
                   right: 16,
                   child: Card(
-                    elevation: 6,
+                    elevation: 2,
+                    color: Colors.white.withValues(alpha: .96),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -320,10 +321,10 @@ class _MapScreenState extends State<MapScreen>
                         children: [
                           Row(
                             children: [
-                              Icon(
-                                Icons.directions_bus,
-                                color: mapState?.selectedBus?['color'],
-                                size: 28,
+                              Container(
+                                padding: const EdgeInsets.all(9),
+                                decoration: BoxDecoration(color: (mapState?.selectedBus?['color'] as Color? ?? AppTheme.kBlueColor).withValues(alpha: .14), borderRadius: BorderRadius.circular(12)),
+                                child: Icon(Icons.directions_bus_rounded, color: mapState?.selectedBus?['color'], size: 25),
                               ),
                               const SizedBox(width: 12),
                               Text(
@@ -346,8 +347,7 @@ class _MapScreenState extends State<MapScreen>
                                   const Text(
                                     'ETA',
                                     style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey,
+                                      fontSize: 12, color: AppTheme.kMutedColor,
                                     ),
                                   ),
                                   Text(
@@ -366,8 +366,7 @@ class _MapScreenState extends State<MapScreen>
                                   const Text(
                                     'Distance',
                                     style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey,
+                                      fontSize: 12, color: AppTheme.kMutedColor,
                                     ),
                                   ),
                                   Text(
@@ -386,8 +385,7 @@ class _MapScreenState extends State<MapScreen>
                                   const Text(
                                     'Crowd',
                                     style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey,
+                                      fontSize: 12, color: AppTheme.kMutedColor,
                                     ),
                                   ),
                                   Container(
@@ -409,7 +407,7 @@ class _MapScreenState extends State<MapScreen>
                                       ),
                                     ),
                                     child: Text(
-                                      mapState?.selectedBus?['crowdLevel'],
+                                      mapState?.selectedBus?['crowdLevel'] ?? 'Unknown',
                                       style: TextStyle(
                                         color: AppTheme.kWhiteColor,
                                         fontWeight: FontWeight.bold,
@@ -441,11 +439,12 @@ class _MapScreenState extends State<MapScreen>
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.all(3.0),
+                          padding: const EdgeInsets.all(4),
                           child: TextField(
                             controller: _destinationController,
                             decoration: InputDecoration(
-                              hintText: 'Enter destination location',
+                              hintText: 'Where are you going?',
+                              prefixIcon: const Icon(Icons.search_rounded),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
                                 borderSide: BorderSide.none,
@@ -461,12 +460,7 @@ class _MapScreenState extends State<MapScreen>
                                   color: AppTheme.kBlueColor,
                                 ),
                               ),
-                              filled: true,
-                              fillColor: Colors.white,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
+                              filled: true, fillColor: Colors.white,
                             ),
                             onSubmitted: (location) {
                               for (var bus in _buses) {
@@ -516,9 +510,18 @@ class _MapScreenState extends State<MapScreen>
                                           ),
                                           const Divider(),
                                           Expanded(
-                                            child: state is MapLoading
-                                                ? const Loader()
-                                                : ListView.builder(
+                                            child: BlocBuilder<MapCubit, MapState>(
+                                              builder: (context, sheetState) {
+                                                if (sheetState is MapLoading || sheetState is MapInitial) {
+                                                  return const Loader();
+                                                }
+                                                if (sheetState is MapFailure) {
+                                                  return Center(child: Text(sheetState.message));
+                                                }
+                                                if (sheetState is! MapLoaded || sheetState.route.isEmpty) {
+                                                  return const Loader();
+                                                }
+                                                return ListView.builder(
                                                     itemCount: _buses.length,
                                                     itemBuilder: (context, index) {
                                                       final bus = _buses[index];
@@ -557,7 +560,9 @@ class _MapScreenState extends State<MapScreen>
                                                         ),
                                                       );
                                                     },
-                                                  ),
+                                                  );
+                                              },
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -572,12 +577,12 @@ class _MapScreenState extends State<MapScreen>
                     ),
 
                     // Menu button to open end drawer
-                    IconButton(
-                      onPressed: () => Scaffold.of(context).openEndDrawer(),
-                      icon: Icon(
-                        Icons.menu,
-                        color: AppTheme.kBlackColor,
-                        size: 28.0,
+                    Container(
+                      margin: const EdgeInsets.only(left: 8),
+                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)]),
+                      child: IconButton(
+                        onPressed: () => Scaffold.of(context).openEndDrawer(),
+                        icon: const Icon(Icons.menu_rounded, color: AppTheme.kBlackColor),
                       ),
                     ),
                   ],
@@ -590,8 +595,10 @@ class _MapScreenState extends State<MapScreen>
                   bottom: 30,
                   left: 16,
                   right: 16,
-                  child: GestureDetector(
-                    onTap: () {
+                  child: SizedBox(
+                    height: 56,
+                    child: ElevatedButton.icon(
+                    onPressed: () {
                       if (mapState?.isTracking == false) {
                         context.read<MapCubit>().startBusTracking();
                       } else {
@@ -620,29 +627,15 @@ class _MapScreenState extends State<MapScreen>
                         );
                       }
                     },
-                    child: Container(
-                      height: 60,
-                      width: 60,
-                      decoration: BoxDecoration(
-                        color: mapState?.isTracking == true
-                            ? Colors.red
-                            : AppTheme.kBlueColor,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          const BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 8,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: mapState?.isTracking == true ? AppTheme.kRedColor : AppTheme.kBlueColor, foregroundColor: Colors.white, elevation: 3, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                      icon: Icon(
                         mapState?.isTracking == true
                             ? Icons.stop
                             : Icons.power_settings_new,
                         color: Colors.white,
-                        size: 28,
+                        size: 22,
                       ),
+                      label: Text(mapState?.isTracking == true ? 'Stop live tracking' : 'Start live tracking', style: const TextStyle(fontWeight: FontWeight.w700)),
                     ),
                   ),
                 ),

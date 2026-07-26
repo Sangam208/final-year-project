@@ -21,6 +21,10 @@ class MapCubit extends Cubit<MapState> {
        super(MapInitial());
 
   void searchDestination(String query) async {
+    if (query.trim().isEmpty) {
+      emit(MapFailure('Please enter a destination.'));
+      return;
+    }
     emit(MapLoading());
 
     final res = await _mapRepository.getCoordinates(query: query);
@@ -130,7 +134,7 @@ class MapCubit extends Cubit<MapState> {
 
     // Take k nearest neighbors (let's start with k=5)
     const int k = 5;
-    final nearest = distances.take(k).toList();
+    final nearest = distances.take(min(k, distances.length)).toList();
 
     // Count votes for each crowd level
     final Map<String, int> votes = {};

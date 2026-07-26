@@ -1,17 +1,30 @@
-# bus_tracker
+# Sajilo Yatra — Smart Bus Tracker
 
-A new Flutter project.
+Sajilo Yatra is a Flutter mobile application for planning local bus journeys in Kathmandu. It combines destination search, current-location routing, simulated live bus movement, and crowd-level prediction to make public transport information easier to understand.
 
-## Getting Started
+## Key features
 
-This project is a starting point for a Flutter application.
+- Phone-number authentication using Supabase OTP
+- Current-location permission handling and live location updates
+- Destination search with OpenStreetMap Nominatim
+- Road-route generation through OSRM
+- Simulated live bus tracking with ETA and distance updates
+- Crowd-level prediction using a k-nearest-neighbours model and historical CSV data
+- Responsive Material 3 interface with clear tracking controls
 
-A few resources to get you started if this is your first Flutter project:
+## Architecture
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+The project follows a feature-first clean architecture:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```text
+presentation (Bloc/Cubit + screens) → domain (entities + repositories) → data (API/asset data sources)
+```
+
+## Run locally
+
+1. Install Flutter SDK 3.11 or later.
+2. Create `.env` with the Supabase credentials required by the project.
+3. Run `flutter pub get`.
+4. Connect an Android/iOS device or emulator and run `flutter run`.
+
+Android location and internet permissions are included in the manifest. For the best demo, allow precise location when prompted and search for a Kathmandu destination such as `Pashupatinath` or `Thamel`.

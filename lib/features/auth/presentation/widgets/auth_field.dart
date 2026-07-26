@@ -20,8 +20,9 @@ class Authfield extends StatelessWidget {
       validator: validator,
       controller: fieldController,
       decoration: InputDecoration(
-        border: OutlineInputBorder(),
         prefixText: prefixText,
+        prefixIcon: const Icon(Icons.phone_outlined),
+        hintText: '98XXXXXXXX',
       ),
       keyboardType: TextInputType.number,
       maxLength: maxLength,

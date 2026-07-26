@@ -36,9 +36,6 @@ class _AuthScreenState extends State<AuthScreen> {
     return GestureDetector(
       onTap: () => focusScope(context),
       child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: AppTheme.kAuthColor,
-        ),
         backgroundColor: AppTheme.kAuthColor,
         body: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
@@ -55,58 +52,53 @@ class _AuthScreenState extends State<AuthScreen> {
           builder: (context, state) {
             return SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.all(12.0),
+                padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text.rich(
-                      TextSpan(
-                        text: 'B u s   T r a c k e r',
-                        style: Theme.of(context).textTheme.titleMedium!
-                            .copyWith(
-                              color: AppTheme.kBlueColor,
-                              fontSize: 35,
-                            ),
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: AppTheme.kBlueColor,
+                        borderRadius: BorderRadius.circular(16),
                       ),
+                      child: const Icon(Icons.directions_bus_rounded, color: Colors.white, size: 30),
                     ),
-
-                    Lottie.asset(
-                      'assets/lottie/moving_bus.json',
+                    const SizedBox(height: 28),
+                    Text('Sajilo Yatra', style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 8),
+                    const Text('Track your bus, plan your trip, and travel with confidence.', style: TextStyle(color: AppTheme.kMutedColor, height: 1.45)),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 220,
                       width: double.infinity,
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    Card(
-                      elevation: 3.0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadiusGeometry.circular(
-                          12.0,
-                        ),
-                        side: BorderSide(
-                          color: AppTheme.appColor1,
-                          style: BorderStyle.solid,
-                        ),
+                      child: Lottie.asset(
+                      'assets/lottie/moving_bus.json',
+                        fit: BoxFit.contain,
                       ),
-                      color: AppTheme.appColor2,
+                    ),
+                    const SizedBox(height: 12),
+                    Card(
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                      color: AppTheme.kWhiteColor,
                       child: Form(
                         key: _phoneFormKey,
                         child: Padding(
-                          padding: const EdgeInsets.all(16.0),
+                          padding: const EdgeInsets.all(20),
                           child: Column(
                             children: [
                               Text(
-                                'E n t e r   P h o n e   N u m b e r',
-                                style:
-                                    Theme.of(
-                                      context,
-                                    ).textTheme.bodyMedium!.copyWith(
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                                'Continue with your mobile number',
+                                style: Theme.of(context).textTheme.titleMedium!.copyWith(fontSize: 18),
                               ),
-                              const SizedBox(
-                                height: 10,
-                              ),
+                              const SizedBox(height: 6),
+                              const Text('We will send a one-time verification code.', style: TextStyle(color: AppTheme.kMutedColor)),
+                              const SizedBox(height: 18),
                               Authfield(
                                 prefixText: '+977 ',
                                 fieldController: _phoneController,
@@ -127,10 +119,10 @@ class _AuthScreenState extends State<AuthScreen> {
                                   return null;
                                 },
                               ),
-                              const SizedBox(height: 15),
+                              const SizedBox(height: 20),
                               AuthButton(
                                 onPressed: () {
-                                  if (state is AuthLoading) null;
+                                  if (state is AuthLoading) return;
                                   if (_phoneFormKey.currentState!.validate()) {
                                     context.read<AuthBloc>().add(
                                       AuthSendOTP(
@@ -142,20 +134,11 @@ class _AuthScreenState extends State<AuthScreen> {
                                 child: state is AuthLoading
                                     ? const Loader()
                                     : Text(
-                                        'S e n d   O T P',
-                                        style:
-                                            Theme.of(
-                                              context,
-                                            ).textTheme.bodyMedium!.copyWith(
-                                              fontWeight: FontWeight.normal,
-                                              fontSize: 16,
-                                              color: AppTheme.kWhiteColor,
-                                            ),
+                                        'Send verification code',
+                                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                                       ),
                               ),
-                              const SizedBox(
-                                height: 10,
-                              ),
+                              const SizedBox(height: 4),
                             ],
                           ),
                         ),

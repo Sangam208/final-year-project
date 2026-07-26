@@ -1,33 +1,40 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static Color appColor1 = Colors.grey.shade300;
-  static Color appColor2 = Colors.grey.shade200;
+  static const kWhiteColor = Colors.white;
+  static const kBlackColor = Color(0xFF172033);
+  static const kBlueColor = Color(0xFF1769E0);
+  static const kRedColor = Color(0xFFE5484D);
+  static const kGreenColor = Color(0xFF18A871);
+  static const kOrangeColor = Color(0xFFF49B22);
+  static const kAuthColor = Color(0xFFF5F8FC);
+  static const kSurfaceColor = Color(0xFFF8FAFC);
+  static const kMutedColor = Color(0xFF64748B);
+  // Kept as named surfaces for the OTP screen and future authentication flows.
+  static const appColor1 = Color(0xFFE2E8F0);
+  static const appColor2 = kWhiteColor;
 
-  static Color kWhiteColor = Colors.white;
-  static Color kBlackColor = Colors.black;
-  static Color kBlueColor = Colors.blue;
-  static Color kRedColor = Colors.red;
-  static Color kGreenColor = Colors.green;
-  static Color kOrangeColor = const Color.fromARGB(255, 255, 186, 59);
-  static Color kAuthColor = const Color.fromARGB(255, 102, 221, 106);
-
-  static ThemeData themeData = ThemeData(
-    textTheme: TextTheme(
-      bodyMedium: TextStyle(
-        fontSize: 18.0,
-        fontFamily: 'Lato',
-        fontWeight: FontWeight.bold,
-      ),
-      titleMedium: TextStyle(
-        fontSize: 32,
-        fontFamily: 'Lato',
-        fontWeight: FontWeight.bold,
-        color: kWhiteColor,
-      ),
+  static final ThemeData themeData = ThemeData(
+    useMaterial3: true,
+    fontFamily: 'Lato',
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: kBlueColor,
+      primary: kBlueColor,
+      surface: kSurfaceColor,
     ),
-    appBarTheme: AppBarTheme(
-      backgroundColor: Color.fromRGBO(36, 149, 255, 1),
+    scaffoldBackgroundColor: kSurfaceColor,
+    textTheme: const TextTheme(
+      bodyMedium: TextStyle(fontSize: 15, color: kBlackColor),
+      titleMedium: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: kBlackColor),
+      titleLarge: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: kBlackColor),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: kWhiteColor,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: kBlueColor, width: 1.5)),
     ),
   );
 }

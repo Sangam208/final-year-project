@@ -14,13 +14,11 @@ class AuthButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadiusGeometry.circular(
-            12,
-          ),
-        ),
-        minimumSize: Size(double.infinity, 50.0),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        minimumSize: const Size(double.infinity, 54),
         backgroundColor: AppTheme.kBlueColor,
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
       onPressed: onPressed,
       child: child,
