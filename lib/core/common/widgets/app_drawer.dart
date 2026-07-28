@@ -2,6 +2,7 @@ import 'package:bus_tracker/core/cubits/app_user/app_user_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bus_tracker/core/theme/app_theme.dart';
+import 'package:bus_tracker/features/auth/presentation/screens/profile_screen.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -32,6 +33,7 @@ class AppDrawer extends StatelessWidget {
             padding: EdgeInsets.fromLTRB(24, 24, 24, 8),
             child: Text('ACCOUNT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.kMutedColor, letterSpacing: 1.1)),
           ),
+          
           ListTile(
             leading: const Icon(Icons.logout_rounded, color: AppTheme.kRedColor),
             title: const Text('Log out', style: TextStyle(fontWeight: FontWeight.w600)),
