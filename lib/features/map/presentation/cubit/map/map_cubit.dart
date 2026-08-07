@@ -43,26 +43,130 @@ class MapCubit extends Cubit<MapState> {
 
     emit(MapLoading());
 
-    final res = await _mapRepository.getRoute(
-      start: locationState.location!,
-      end: destination,
+    final res = await _mapRepository.getRoutes(
+      waypoints: [locationState.location!, destination],
     );
+
     res.fold(
       (l) => emit(MapFailure(l.message)),
-      (r) => emit(
-        MapLoaded(
-          destination: destination,
-          route: r.polylinePoints,
+      (routes) {
+        final available = routes.map((r) => r.polylinePoints).toList();
+
+        emit(
+          MapLoaded(
+            destination: destination,
+            availableRoutes: available,
+            // route stays empty until user selects a bus
+          ),
+        );
+        // print("ORS returned ${available.length} routes");
+      },
+    );
+  }
+
+  Future<void> confirmRouteSelection(Map<String, dynamic> selectedBus) async {
+    final currentState = state;
+    if (currentState is! MapLoaded) return;
+
+    final locationState = _userLocationCubit.state;
+    if (locationState is! UserLocationLoaded ||
+        locationState.location == null) {
+      emit(MapFailure('Current location not available'));
+      return;
+    }
+    final userLocation = locationState.location!;
+    final destination = currentState.destination;
+    if (destination == null) return;
+
+    final referenceRoute = currentState.availableRoutes.isNotEmpty
+        ? currentState.availableRoutes.first
+        : <LatLng>[];
+
+    if (referenceRoute.length < 2) {
+      emit(
+        currentState.copyWith(
+          showRoute: true,
+          selectedBus: selectedBus,
+          route: referenceRoute,
+          userLocationIndex: 0,
         ),
+      );
+      return;
+    }
+
+    // Simulated "how far back is the bus"
+    final approachDistanceMeters = switch (selectedBus['name']) {
+      'Fast Bus' => 800.0,
+      'Regular Bus' => 1600.0,
+      'Economy Bus' => 2800.0,
+      _ => 1200.0,
+    };
+
+    const distanceCalc = Distance();
+    final backwardBearing = distanceCalc.bearing(
+      referenceRoute[1],
+      referenceRoute[0],
+    );
+    final busOrigin = distanceCalc.offset(
+      userLocation,
+      approachDistanceMeters,
+      backwardBearing,
+    );
+
+    // busOrigin -> userLocation -> destination.
+    List<LatLng> fullRoute = [];
+    try {
+      final res = await _mapRepository.getRoutes(
+        waypoints: [busOrigin, userLocation, destination],
+      );
+      res.fold(
+        (l) => fullRoute = [],
+        (routes) =>
+            fullRoute = routes.isNotEmpty ? routes.first.polylinePoints : [],
+      );
+    } catch (_) {
+      fullRoute = [];
+    }
+
+    if (fullRoute.length < 2) {
+      // Fallback
+      emit(
+        currentState.copyWith(
+          showRoute: true,
+          selectedBus: selectedBus,
+          route: referenceRoute,
+          userLocationIndex: 0,
+        ),
+      );
+      return;
+    }
+
+    final userIndex = _nearestIndex(fullRoute, userLocation);
+
+    emit(
+      currentState.copyWith(
+        showRoute: true,
+        selectedBus: selectedBus,
+        route: fullRoute,
+        userLocationIndex: userIndex,
       ),
     );
   }
 
-  void confirmRouteSelection(Map<String, dynamic> selectedBus) {
-    final currentState = state;
-    if (currentState is MapLoaded) {
-      emit(currentState.copyWith(showRoute: true, selectedBus: selectedBus));
+  /// Finds the index of the route point closest to [point] — used to
+  /// figure out roughly where along the bus's route the user is standing.
+  int _nearestIndex(List<LatLng> route, LatLng point) {
+    const distanceCalc = Distance();
+    int nearest = 0;
+    double minDist = double.infinity;
+    for (int i = 0; i < route.length; i++) {
+      final d = distanceCalc(route[i], point);
+      if (d < minDist) {
+        minDist = d;
+        nearest = i;
+      }
     }
+    return nearest;
   }
 
   void startBusTracking() {
@@ -81,6 +185,7 @@ class MapCubit extends Cubit<MapState> {
           showRoute: false,
           route: [],
           selectedBus: null,
+          userLocationIndex: 0,
         ),
       );
     }

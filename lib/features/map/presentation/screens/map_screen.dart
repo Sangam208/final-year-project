@@ -34,6 +34,9 @@ class _MapScreenState extends State<MapScreen>
   final Distance _distanceCalculator = const Distance();
   double _currentDistance = 0.0;
   String _eta = '~'; // fallback
+  bool _nearUserNotified = false;
+  bool _isAtStop = false; // bus paused at user's location, simulating a stop
+  String? _dynamicCrowdLevel; // live-recomputed crowd level while traveling
 
   final List<Map<String, dynamic>> _buses = [
     {
@@ -100,6 +103,9 @@ class _MapScreenState extends State<MapScreen>
                 totalPoints,
               );
               if (_busIndex >= totalPoints) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  showToast('Bus has reached your destination!');
+                });
                 Future.delayed(Duration(milliseconds: 800), () {
                   if (mounted) {
                     context.read<MapCubit>().stopBusTracking();
@@ -108,19 +114,76 @@ class _MapScreenState extends State<MapScreen>
                 });
               }
 
-              final destination = mapState!.destination ?? mapState!.route.last;
-
-              // Live distance update and ETA calculation
-              _currentDistance = _distanceCalculator.distance(
-                mapState!.route[_busIndex],
-                destination,
-              );
-
               const double avgBusSpeedKmh = 25.0;
-              final timeHours = _currentDistance / 1000 / avgBusSpeedKmh;
-              final timeMins = (timeHours * 60).round();
+              final userIndex = mapState!.userLocationIndex;
 
-              _eta = timeMins > 0 ? '~$timeMins min' : 'Arriving...';
+              // Trigger the "bus stop" pause once the bus reaches the
+              // user's position along the route.
+              if (!_nearUserNotified && _busIndex >= userIndex) {
+                _nearUserNotified = true;
+                _isAtStop = true;
+                _animationController.stop();
+
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  showToast('Bus has reached your location!');
+                });
+
+                Future.delayed(const Duration(seconds: 4), () {
+                  if (mounted && mapState?.isTracking == true) {
+                    setState(() {
+                      _isAtStop = false;
+                    });
+                    _animationController.forward();
+                  }
+                });
+              }
+
+              if (_isAtStop) {
+                // Bus is "waiting at the stop" — info card goes blank.
+                _eta = '---';
+              } else if (_busIndex < userIndex) {
+                // Bus hasn't reached the user yet — ETA = time for bus
+                // to reach the user's pickup point.
+                _currentDistance = _distanceCalculator.distance(
+                  mapState!.route[_busIndex],
+                  mapState!.route[userIndex],
+                );
+                final timeHours = _currentDistance / 1000 / avgBusSpeedKmh;
+                final timeMins = (timeHours * 60).round();
+
+                _eta = timeMins > 0 ? '~$timeMins min' : 'Arriving';
+              } else {
+                // Bus has passed the user — ETA = time to destination
+                final destination =
+                    mapState!.destination ?? mapState!.route.last;
+
+                _currentDistance = _distanceCalculator.distance(
+                  mapState!.route[_busIndex],
+                  destination,
+                );
+
+                final timeHours = _currentDistance / 1000 / avgBusSpeedKmh;
+                final timeMins = (timeHours * 60).round();
+
+                _eta = timeMins > 0 ? '~$timeMins min' : 'Arriving...';
+
+                // Recompute crowd level live using actual distance
+                // traveled so far, instead of the static dummy value
+                // picked at bus-selection time.
+                final traveledKm =
+                    _distanceCalculator.distance(
+                      mapState!.route.first,
+                      mapState!.route[_busIndex],
+                    ) /
+                    1000;
+
+                _dynamicCrowdLevel = context.read<MapCubit>().predictCrowdLevel(
+                  hour: DateTime.now().hour,
+                  dayOfWeek: (mapState!.selectedBus?['dayOfWeek'] as int?) ?? 6,
+                  distanceKm: traveledKm,
+                  routeId: (mapState!.selectedBus?['routeId'] as int?) ?? 1,
+                );
+              }
             }
           }
         });
@@ -178,12 +241,18 @@ class _MapScreenState extends State<MapScreen>
 
             if (state.isTracking == true && !_animationController.isAnimating) {
               _animationController.forward();
+              _nearUserNotified = false;
+              _isAtStop = false;
+              _dynamicCrowdLevel = null;
             }
 
             // reset bus index and animation controller when tracker is stopped
             if (state.isTracking == false) {
               _busIndex = 0;
               _animationController.reset();
+              _nearUserNotified = false;
+              _isAtStop = false;
+              _dynamicCrowdLevel = null;
             }
           }
         },
@@ -261,7 +330,11 @@ class _MapScreenState extends State<MapScreen>
                     PolylineLayer(
                       polylines: [
                         Polyline(
-                          points: mapState!.route,
+                          points:
+                              (mapState!.isTracking &&
+                                  _busIndex < mapState!.route.length)
+                              ? mapState!.route.sublist(_busIndex)
+                              : mapState!.route,
                           strokeWidth: 8.0,
                           borderStrokeWidth: 2.5,
                           borderColor: AppTheme.kWhiteColor,
@@ -271,10 +344,10 @@ class _MapScreenState extends State<MapScreen>
                       ],
                     ),
 
-                  // Moving Bus Icon
+                  // Moving Bus Icon — visible once a bus is selected (sitting
+                  // at its start point) and animates once tracking begins.
                   if (mapState?.showRoute == true &&
                       mapState?.route.isNotEmpty == true &&
-                      mapState?.isTracking == true &&
                       _busIndex < mapState!.route.length - 1)
                     MarkerLayer(
                       markers: [
@@ -371,7 +444,9 @@ class _MapScreenState extends State<MapScreen>
                                     ),
                                   ),
                                   Text(
-                                    '~${(_currentDistance / 1000).toStringAsFixed(1)} km',
+                                    _isAtStop
+                                        ? '---'
+                                        : '~${(_currentDistance / 1000).toStringAsFixed(1)} km',
                                     style: TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
@@ -390,31 +465,41 @@ class _MapScreenState extends State<MapScreen>
                                       color: Colors.grey,
                                     ),
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          mapState?.selectedBus?['crowdLevel'] ==
-                                              'Low'
+                                  Builder(
+                                    builder: (context) {
+                                      final displayedCrowd = _isAtStop
+                                          ? '---'
+                                          : (_dynamicCrowdLevel ??
+                                                mapState
+                                                    ?.selectedBus?['crowdLevel'] ??
+                                                'Unavailable');
+                                      final crowdColor = _isAtStop
+                                          ? Colors.grey
+                                          : displayedCrowd == 'Low'
                                           ? AppTheme.kGreenColor
-                                          : mapState?.selectedBus?['crowdLevel'] ==
-                                                'High'
+                                          : displayedCrowd == 'High'
                                           ? AppTheme.kRedColor
-                                          : AppTheme.kOrangeColor,
-                                      borderRadius: BorderRadius.circular(
-                                        20,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      mapState?.selectedBus?['crowdLevel'],
-                                      style: TextStyle(
-                                        color: AppTheme.kWhiteColor,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
+                                          : AppTheme.kOrangeColor;
+                                      return Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: crowdColor,
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          displayedCrowd,
+                                          style: TextStyle(
+                                            color: AppTheme.kWhiteColor,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ],
                               ),

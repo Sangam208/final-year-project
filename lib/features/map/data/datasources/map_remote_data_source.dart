@@ -1,3 +1,4 @@
+import 'package:bus_tracker/core/config/secrets.dart';
 import 'package:bus_tracker/core/errors/exception.dart';
 import 'package:bus_tracker/features/map/data/models/crowd_data_model.dart';
 import 'package:bus_tracker/features/map/data/models/route_model.dart';
@@ -9,7 +10,14 @@ import 'package:latlong2/latlong.dart';
 
 abstract interface class MapRemoteDataSource {
   Future<LatLng?> getCoordinates({required String query});
-  Future<RouteModel?> getRoute({required LatLng start, required LatLng end});
+
+  /// [waypoints] must have at least 2 points, in travel order
+  /// (e.g. [start, end] or [start, via, end]).
+  /// Alternative routes are only requested when exactly 2 waypoints are
+  /// given — ORS does not support alternative_routes with via-points.
+  Future<List<RouteModel>> getRoutes({
+    required List<LatLng> waypoints,
+  });
   Future<List<CrowdDataModel>?> loadCrowdData();
 }
 
@@ -53,34 +61,64 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
   }
 
   @override
-  Future<RouteModel?> getRoute({
-    required LatLng start,
-    required LatLng end,
+  Future<List<RouteModel>> getRoutes({
+    required List<LatLng> waypoints,
   }) async {
+    if (waypoints.length < 2) return [];
+
     try {
-      final response = await _dio.get(
-        "http://router.project-osrm.org/route/v1/driving/"
-        '${start.longitude},${start.latitude};'
-        '${end.longitude},${end.latitude}?overview=full&geometries=polyline',
+      final bool supportsAlternatives = waypoints.length == 2;
+
+      final Map<String, dynamic> requestBody = {
+        'coordinates': waypoints.map((p) => [p.longitude, p.latitude]).toList(),
+        'geometry': true,
+        'instructions': false,
+      };
+
+      if (supportsAlternatives) {
+        requestBody['alternative_routes'] = {
+          'target_count': 2, // ask for 2 alternatives (total up to 3 routes)
+          'weight_factor': 1.6,
+          'share_factor': 0.7,
+        };
+      }
+
+      final response = await _dio.post(
+        'https://api.heigit.org/openrouteservice/v2/directions/driving-car/json',
+        options: Options(
+          headers: {
+            'Authorization': orsApiKey,
+            'Content-Type': 'application/json',
+          },
+        ),
+        data: requestBody,
       );
 
       if (response.statusCode == 200) {
-        final geometryData = Map<String, dynamic>.from(response.data);
+        final data = response.data as Map<String, dynamic>;
+        final routesData = data['routes'] as List;
 
-        final encodedPolyline = geometryData['routes'][0]['geometry'] as String;
-        PolylinePoints polylinePoints = PolylinePoints();
-        List<PointLatLng> decodedPoints = polylinePoints.decodePolyline(
-          encodedPolyline,
-        );
+        final List<RouteModel> routes = [];
 
-        final route = decodedPoints
-            .map(
-              (point) => LatLng(point.latitude, point.longitude),
-            )
-            .toList();
-        return RouteModel(start: start, end: end, polylinePoints: route);
+        for (final routeJson in routesData) {
+          final encoded = routeJson['geometry'] as String;
+          final decoded = PolylinePoints().decodePolyline(encoded);
+          final points = decoded
+              .map((p) => LatLng(p.latitude, p.longitude))
+              .toList();
+
+          routes.add(
+            RouteModel(
+              start: waypoints.first,
+              end: waypoints.last,
+              polylinePoints: points,
+            ),
+          );
+        }
+
+        return routes;
       }
-      return null;
+      return [];
     } catch (e) {
       throw ServerException(e.toString());
     }

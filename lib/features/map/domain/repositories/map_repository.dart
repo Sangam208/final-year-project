@@ -8,9 +8,10 @@ abstract interface class MapRepository {
   Future<Either<Failure, LatLng>> getCoordinates({
     required String query,
   });
-  Future<Either<Failure, RouteEntity>> getRoute({
-    required LatLng start,
-    required LatLng end,
+
+  /// [waypoints] must have at least 2 points, in travel order.
+  Future<Either<Failure, List<RouteEntity>>> getRoutes({
+    required List<LatLng> waypoints,
   });
   Future<Either<Failure, List<CrowdData>?>> loadCrowdData();
 }

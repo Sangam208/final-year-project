@@ -2,7 +2,7 @@ import 'package:bus_tracker/core/errors/exception.dart';
 import 'package:bus_tracker/core/errors/failure.dart';
 import 'package:bus_tracker/features/map/data/datasources/map_remote_data_source.dart';
 import 'package:bus_tracker/features/map/data/models/crowd_data_model.dart';
-import 'package:bus_tracker/features/map/data/models/route_model.dart';
+import 'package:bus_tracker/features/map/domain/entities/route_entity.dart';
 import 'package:bus_tracker/features/map/domain/repositories/map_repository.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:latlong2/latlong.dart';
@@ -25,13 +25,12 @@ class MapRepositoryImpl implements MapRepository {
   }
 
   @override
-  Future<Either<Failure, RouteModel>> getRoute({
-    required LatLng start,
-    required LatLng end,
+  Future<Either<Failure, List<RouteEntity>>> getRoutes({
+    required List<LatLng> waypoints,
   }) async {
     try {
-      final res = await _mapRemoteDataSource.getRoute(start: start, end: end);
-      if (res == null) return left(Failure('Failed to fetch route'));
+      final res = await _mapRemoteDataSource.getRoutes(waypoints: waypoints);
+      if (res.isEmpty) return left(Failure('Failed to fetch routes'));
       return right(res);
     } on ServerException catch (e) {
       return left(Failure(e.message));

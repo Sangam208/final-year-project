@@ -22,7 +22,7 @@ final serviceLocator = GetIt.instance;
 Future<void> initDepedencies() async {
   final supabase = await Supabase.initialize(
     url: projectURI,
-    anonKey: anonKey,
+    publishableKey: anonKey,
   );
 
   serviceLocator
