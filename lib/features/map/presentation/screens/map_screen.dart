@@ -33,10 +33,10 @@ class _MapScreenState extends State<MapScreen>
 
   final Distance _distanceCalculator = const Distance();
   double _currentDistance = 0.0;
-  String _eta = '~'; // fallback
+  String _eta = '~';
   bool _nearUserNotified = false;
-  bool _isAtStop = false; // bus paused at user's location, simulating a stop
-  String? _dynamicCrowdLevel; // live-recomputed crowd level while traveling
+  bool _isAtStop = false;
+  String? _dynamicCrowdLevel;
 
   final List<Map<String, dynamic>> _buses = [
     {
@@ -83,9 +83,10 @@ class _MapScreenState extends State<MapScreen>
   void initState() {
     super.initState();
     context.read<MapCubit>().loadCrowdData();
+
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 35), // reasonable speed for testing
+      duration: const Duration(seconds: 35),
     );
 
     _animation = Tween<double>(begin: 0, end: 1).animate(_animationController)
@@ -96,17 +97,17 @@ class _MapScreenState extends State<MapScreen>
             if (mapState != null &&
                 mapState!.route.isNotEmpty &&
                 mapState!.isTracking) {
-              // Bus index update
               final totalPoints = mapState!.route.length - 1;
               _busIndex = (_animation.value * totalPoints).floor().clamp(
                 0,
                 totalPoints,
               );
+
               if (_busIndex >= totalPoints) {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   showToast('Bus has reached your destination!');
                 });
-                Future.delayed(Duration(milliseconds: 800), () {
+                Future.delayed(const Duration(milliseconds: 800), () {
                   if (mounted) {
                     context.read<MapCubit>().stopBusTracking();
                     _destinationController.clear();
@@ -117,8 +118,7 @@ class _MapScreenState extends State<MapScreen>
               const double avgBusSpeedKmh = 25.0;
               final userIndex = mapState!.userLocationIndex;
 
-              // Trigger the "bus stop" pause once the bus reaches the
-              // user's position along the route.
+              // ===== Bus stop simulation =====
               if (!_nearUserNotified && _busIndex >= userIndex) {
                 _nearUserNotified = true;
                 _isAtStop = true;
@@ -138,22 +138,22 @@ class _MapScreenState extends State<MapScreen>
                 });
               }
 
+              // ===== ETA + Crowd Level =====
               if (_isAtStop) {
-                // Bus is "waiting at the stop" — info card goes blank.
                 _eta = '---';
               } else if (_busIndex < userIndex) {
-                // Bus hasn't reached the user yet — ETA = time for bus
-                // to reach the user's pickup point.
+                // Still approaching user → use original static crowd
+                _dynamicCrowdLevel = null;
+
                 _currentDistance = _distanceCalculator.distance(
                   mapState!.route[_busIndex],
                   mapState!.route[userIndex],
                 );
                 final timeHours = _currentDistance / 1000 / avgBusSpeedKmh;
                 final timeMins = (timeHours * 60).round();
-
                 _eta = timeMins > 0 ? '~$timeMins min' : 'Arriving';
               } else {
-                // Bus has passed the user — ETA = time to destination
+                // After user
                 final destination =
                     mapState!.destination ?? mapState!.route.last;
 
@@ -161,15 +161,10 @@ class _MapScreenState extends State<MapScreen>
                   mapState!.route[_busIndex],
                   destination,
                 );
-
                 final timeHours = _currentDistance / 1000 / avgBusSpeedKmh;
                 final timeMins = (timeHours * 60).round();
-
                 _eta = timeMins > 0 ? '~$timeMins min' : 'Arriving...';
 
-                // Recompute crowd level live using actual distance
-                // traveled so far, instead of the static dummy value
-                // picked at bus-selection time.
                 final traveledKm =
                     _distanceCalculator.distance(
                       mapState!.route.first,
@@ -177,12 +172,23 @@ class _MapScreenState extends State<MapScreen>
                     ) /
                     1000;
 
-                _dynamicCrowdLevel = context.read<MapCubit>().predictCrowdLevel(
-                  hour: DateTime.now().hour,
-                  dayOfWeek: (mapState!.selectedBus?['dayOfWeek'] as int?) ?? 6,
-                  distanceKm: traveledKm,
-                  routeId: (mapState!.selectedBus?['routeId'] as int?) ?? 1,
-                );
+                // Key change:
+                // Right after boarding → force High
+                // After some distance → use real KNN
+                if (traveledKm < 2.0) {
+                  _dynamicCrowdLevel = 'High';
+                } else {
+                  _dynamicCrowdLevel = context
+                      .read<MapCubit>()
+                      .predictCrowdLevel(
+                        hour: DateTime.now().hour,
+                        dayOfWeek:
+                            (mapState!.selectedBus?['dayOfWeek'] as int?) ?? 6,
+                        distanceKm: traveledKm,
+                        routeId:
+                            (mapState!.selectedBus?['routeId'] as int?) ?? 1,
+                      );
+                }
               }
             }
           }
@@ -197,9 +203,7 @@ class _MapScreenState extends State<MapScreen>
 
     final y = sin(dLon) * cos(lat2);
     final x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon);
-    final bearing = atan2(y, x);
-
-    return bearing; // in radians (Transform.rotate expects radians)
+    return atan2(y, x);
   }
 
   @override
@@ -218,7 +222,6 @@ class _MapScreenState extends State<MapScreen>
           if (state is MapFailure) {
             showToast(state.message);
           }
-          // Start animation when tracking begins
           if (state is MapLoaded) {
             if (state.showRoute && state.route.isNotEmpty) {
               final locationState = context.read<UserLocationCubit>().state;
@@ -228,11 +231,11 @@ class _MapScreenState extends State<MapScreen>
 
               if (currentLocation != null) {
                 final bounds = LatLngBounds.fromPoints(state.route);
-                Future.delayed(Duration(milliseconds: 300), () {
+                Future.delayed(const Duration(milliseconds: 300), () {
                   _mapController.fitCamera(
                     CameraFit.bounds(
                       bounds: bounds,
-                      padding: EdgeInsets.all(50.0),
+                      padding: const EdgeInsets.all(50.0),
                     ),
                   );
                 });
@@ -246,7 +249,6 @@ class _MapScreenState extends State<MapScreen>
               _dynamicCrowdLevel = null;
             }
 
-            // reset bus index and animation controller when tracker is stopped
             if (state.isTracking == false) {
               _busIndex = 0;
               _animationController.reset();
@@ -287,8 +289,6 @@ class _MapScreenState extends State<MapScreen>
                         'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
                     subdomains: const ['a', 'b', 'c', 'd'],
                   ),
-
-                  // Current location marker
                   CurrentLocationLayer(
                     style: LocationMarkerStyle(
                       marker: DefaultLocationMarker(
@@ -299,11 +299,9 @@ class _MapScreenState extends State<MapScreen>
                           color: AppTheme.kBlueColor,
                         ),
                       ),
-                      markerSize: Size(35, 35),
+                      markerSize: const Size(35, 35),
                     ),
                   ),
-
-                  // Destination marker
                   if (mapState is MapLoaded &&
                       mapState?.destination != null &&
                       mapState?.route.isNotEmpty == true)
@@ -321,8 +319,6 @@ class _MapScreenState extends State<MapScreen>
                         ),
                       ],
                     ),
-
-                  // Polyline layer
                   if (currentLocation != null &&
                       mapState is MapLoaded &&
                       mapState?.route.isNotEmpty == true &&
@@ -343,9 +339,6 @@ class _MapScreenState extends State<MapScreen>
                         ),
                       ],
                     ),
-
-                  // Moving Bus Icon — visible once a bus is selected (sitting
-                  // at its start point) and animates once tracking begins.
                   if (mapState?.showRoute == true &&
                       mapState?.route.isNotEmpty == true &&
                       _busIndex < mapState!.route.length - 1)
@@ -401,7 +394,7 @@ class _MapScreenState extends State<MapScreen>
                               const SizedBox(width: 12),
                               Text(
                                 mapState?.selectedBus?['name'] ?? 'Unavailable',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -412,7 +405,6 @@ class _MapScreenState extends State<MapScreen>
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              // ETA (dummy for now)
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -425,14 +417,13 @@ class _MapScreenState extends State<MapScreen>
                                   ),
                                   Text(
                                     _eta,
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ],
                               ),
-                              // Distance from bus to you (dummy for now)
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -447,14 +438,13 @@ class _MapScreenState extends State<MapScreen>
                                     _isAtStop
                                         ? '---'
                                         : '~${(_currentDistance / 1000).toStringAsFixed(1)} km',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ],
                               ),
-                              // Crowd Level - NOW DYNAMIC with KNN
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -473,6 +463,7 @@ class _MapScreenState extends State<MapScreen>
                                                 mapState
                                                     ?.selectedBus?['crowdLevel'] ??
                                                 'Unavailable');
+
                                       final crowdColor = _isAtStop
                                           ? Colors.grey
                                           : displayedCrowd == 'Low'
@@ -480,6 +471,7 @@ class _MapScreenState extends State<MapScreen>
                                           : displayedCrowd == 'High'
                                           ? AppTheme.kRedColor
                                           : AppTheme.kOrangeColor;
+
                                       return Container(
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 12,
@@ -511,7 +503,7 @@ class _MapScreenState extends State<MapScreen>
                   ),
                 ),
 
-              // Destination TextField Overlay
+              // Destination field + menu
               Positioned(
                 top: 40,
                 left: 16,
@@ -620,7 +612,7 @@ class _MapScreenState extends State<MapScreen>
                                                             bus['name'],
                                                           ),
                                                           subtitle: Text(
-                                                            '$_eta • ${bus['crowdLevel']} crowd',
+                                                            '${bus['time']} min • ${bus['crowdLevel']} crowd',
                                                           ),
                                                           trailing: const Icon(
                                                             Icons
@@ -634,7 +626,6 @@ class _MapScreenState extends State<MapScreen>
                                                                 .confirmRouteSelection(
                                                                   bus,
                                                                 );
-
                                                             Navigator.pop(
                                                               context,
                                                             );
@@ -655,8 +646,6 @@ class _MapScreenState extends State<MapScreen>
                         ),
                       ),
                     ),
-
-                    // Menu button to open end drawer
                     IconButton(
                       onPressed: () => Scaffold.of(context).openEndDrawer(),
                       icon: Icon(
@@ -669,7 +658,7 @@ class _MapScreenState extends State<MapScreen>
                 ),
               ),
 
-              // Tracker button
+              // Tracker button (kept exactly as you had it)
               if (mapState?.showRoute == true)
                 Positioned(
                   bottom: 30,
@@ -713,8 +702,8 @@ class _MapScreenState extends State<MapScreen>
                             ? Colors.red
                             : AppTheme.kBlueColor,
                         shape: BoxShape.circle,
-                        boxShadow: [
-                          const BoxShadow(
+                        boxShadow: const [
+                          BoxShadow(
                             color: Colors.black26,
                             blurRadius: 8,
                             offset: Offset(0, 4),
@@ -735,7 +724,7 @@ class _MapScreenState extends State<MapScreen>
           );
         },
       ),
-      endDrawer: AppDrawer(),
+      endDrawer: const AppDrawer(),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppTheme.kBlueColor,
         onPressed: _userCurrentLocation,
