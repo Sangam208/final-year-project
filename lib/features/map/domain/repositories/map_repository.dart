@@ -9,7 +9,6 @@ abstract interface class MapRepository {
     required String query,
   });
 
-  /// [waypoints] must have at least 2 points, in travel order.
   Future<Either<Failure, List<RouteEntity>>> getRoutes({
     required List<LatLng> waypoints,
   });

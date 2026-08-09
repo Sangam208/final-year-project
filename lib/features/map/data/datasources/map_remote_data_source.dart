@@ -11,10 +11,6 @@ import 'package:latlong2/latlong.dart';
 abstract interface class MapRemoteDataSource {
   Future<LatLng?> getCoordinates({required String query});
 
-  /// [waypoints] must have at least 2 points, in travel order
-  /// (e.g. [start, end] or [start, via, end]).
-  /// Alternative routes are only requested when exactly 2 waypoints are
-  /// given — ORS does not support alternative_routes with via-points.
   Future<List<RouteModel>> getRoutes({
     required List<LatLng> waypoints,
   });
