@@ -20,15 +20,19 @@ class MapCubit extends Cubit<MapState> {
        _userLocationCubit = userLocationCubit,
        super(MapInitial());
 
-  void searchDestination(String query) async {
+  Future<bool> searchDestination(String query) async {
     emit(MapLoading());
 
     final res = await _mapRepository.getCoordinates(query: query);
-    res.fold(
-      (l) => emit(MapFailure(l.message)),
+    return res.fold(
+      (l) {
+        emit(MapFailure(l.message));
+        return false;
+      },
       (r) async {
         emit(MapLoaded(destination: r));
         await _getRoute(r);
+        return true;
       },
     );
   }
@@ -56,10 +60,8 @@ class MapCubit extends Cubit<MapState> {
           MapLoaded(
             destination: destination,
             availableRoutes: available,
-            // route stays empty until user selects a bus
           ),
         );
-        // print("ORS returned ${available.length} routes");
       },
     );
   }
@@ -113,7 +115,7 @@ class MapCubit extends Cubit<MapState> {
       backwardBearing,
     );
 
-    // busOrigin -> userLocation -> destination.
+    // Simulating bus movement: busOrigin -> userLocation -> destination.
     List<LatLng> fullRoute = [];
     try {
       final res = await _mapRepository.getRoutes(
@@ -153,8 +155,7 @@ class MapCubit extends Cubit<MapState> {
     );
   }
 
-  /// Finds the index of the route point closest to [point] — used to
-  /// figure out roughly where along the bus's route the user is standing.
+  /// Finding nearest possible point to the user where bus stops
   int _nearestIndex(List<LatLng> route, LatLng point) {
     const distanceCalc = Distance();
     int nearest = 0;
@@ -233,7 +234,7 @@ class MapCubit extends Cubit<MapState> {
     // Sort by distance (closest first)
     distances.sort((a, b) => a.key.compareTo(b.key));
 
-    // Take k nearest neighbors (let's start with k=5)
+    // Take k nearest neighbors (k=5)
     const int k = 5;
     final nearest = distances.take(k).toList();
 
@@ -247,7 +248,7 @@ class MapCubit extends Cubit<MapState> {
     return votes.entries.reduce((a, b) => a.value > b.value ? a : b).key;
   }
 
-  // Helper: Euclidean distance between two points
+  // Euclidean distance between two points
   double _euclideanDistance({
     required int hour1,
     required int day1,

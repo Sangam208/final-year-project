@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
@@ -6,8 +8,22 @@ import 'package:latlong2/latlong.dart';
 part 'user_location_state.dart';
 
 class UserLocationCubit extends Cubit<UserLocationState> {
+  StreamSubscription<ServiceStatus>? _serviceStatusSubscription;
   UserLocationCubit() : super(UserLocationInitial()) {
     _initLocation();
+    _listenToServiceStatus();
+  }
+
+  void _listenToServiceStatus() {
+    _serviceStatusSubscription = Geolocator.getServiceStatusStream().listen(
+      (ServiceStatus status) {
+        if (status == ServiceStatus.enabled) {
+          _initLocation();
+        } else if (status == ServiceStatus.disabled) {
+          emit(UserLocationFailure('Location service disabled'));
+        }
+      },
+    );
   }
 
   Future<void> _initLocation() async {
@@ -22,7 +38,8 @@ class UserLocationCubit extends Cubit<UserLocationState> {
       // Get current position first
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 6),
         ),
       );
 
@@ -34,9 +51,15 @@ class UserLocationCubit extends Cubit<UserLocationState> {
           accuracy: LocationAccuracy.high,
           distanceFilter: 10,
         ),
-      ).listen((Position position) {
-        emit(UserLocationLoaded(LatLng(position.latitude, position.longitude)));
-      });
+      ).listen(
+        (Position position) {
+          emit(
+            UserLocationLoaded(LatLng(position.latitude, position.longitude)),
+          );
+        },
+        onError: (_) => emit(UserLocationFailure("Location disabled")),
+        cancelOnError: true,
+      );
     } catch (e) {
       emit(UserLocationFailure(e.toString()));
     }
@@ -62,5 +85,11 @@ class UserLocationCubit extends Cubit<UserLocationState> {
     }
 
     return true;
+  }
+
+  @override
+  Future<void> close() {
+    _serviceStatusSubscription?.cancel();
+    return super.close();
   }
 }

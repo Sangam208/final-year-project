@@ -35,6 +35,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         },
       );
     } on AuthException catch (e) {
+      final message = e.message.toLowerCase();
+      if (message.contains("unverified")) {
+        throw ServerException("This number is currently unverified");
+      }
       throw ServerException(e.message);
     } catch (e) {
       throw ServerException(e.toString());

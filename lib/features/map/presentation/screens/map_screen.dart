@@ -75,7 +75,7 @@ class _MapScreenState extends State<MapScreen>
     if (locationState is UserLocationLoaded) {
       _mapController.move(locationState.location!, 13.0);
     } else {
-      showToast('Location not available');
+      showToast('Please enable your location');
     }
   }
 
@@ -118,14 +118,14 @@ class _MapScreenState extends State<MapScreen>
               const double avgBusSpeedKmh = 25.0;
               final userIndex = mapState!.userLocationIndex;
 
-              // ===== Bus stop simulation =====
+              // Bus stop simulation
               if (!_nearUserNotified && _busIndex >= userIndex) {
                 _nearUserNotified = true;
                 _isAtStop = true;
                 _animationController.stop();
 
                 WidgetsBinding.instance.addPostFrameCallback((_) {
-                  showToast('Bus has reached your location!');
+                  showToast('Bus is near your location!');
                 });
 
                 Future.delayed(const Duration(seconds: 4), () {
@@ -138,11 +138,11 @@ class _MapScreenState extends State<MapScreen>
                 });
               }
 
-              // ===== ETA + Crowd Level =====
+              // ETA + Crowd Level
               if (_isAtStop) {
                 _eta = '---';
               } else if (_busIndex < userIndex) {
-                // Still approaching user → use original static crowd
+                // Still approaching user -> use original static crowd
                 _dynamicCrowdLevel = null;
 
                 _currentDistance = _distanceCalculator.distance(
@@ -153,7 +153,7 @@ class _MapScreenState extends State<MapScreen>
                 final timeMins = (timeHours * 60).round();
                 _eta = timeMins > 0 ? '~$timeMins min' : 'Arriving';
               } else {
-                // After user
+                // Bus moving forward of the user
                 final destination =
                     mapState!.destination ?? mapState!.route.last;
 
@@ -172,9 +172,6 @@ class _MapScreenState extends State<MapScreen>
                     ) /
                     1000;
 
-                // Key change:
-                // Right after boarding → force High
-                // After some distance → use real KNN
                 if (traveledKm < 2.0) {
                   _dynamicCrowdLevel = 'High';
                 } else {
@@ -219,6 +216,9 @@ class _MapScreenState extends State<MapScreen>
     return Scaffold(
       body: BlocConsumer<MapCubit, MapState>(
         listener: (context, state) {
+          if (state is MapLoading) {
+            const Loader();
+          }
           if (state is MapFailure) {
             showToast(state.message);
           }
@@ -231,7 +231,7 @@ class _MapScreenState extends State<MapScreen>
 
               if (currentLocation != null) {
                 final bounds = LatLngBounds.fromPoints(state.route);
-                Future.delayed(const Duration(milliseconds: 300), () {
+                Future.delayed(const Duration(milliseconds: 200), () {
                   _mapController.fitCamera(
                     CameraFit.bounds(
                       bounds: bounds,
@@ -289,19 +289,20 @@ class _MapScreenState extends State<MapScreen>
                         'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
                     subdomains: const ['a', 'b', 'c', 'd'],
                   ),
-                  CurrentLocationLayer(
-                    style: LocationMarkerStyle(
-                      marker: DefaultLocationMarker(
-                        color: AppTheme.kWhiteColor,
-                        child: Icon(
-                          Icons.location_pin,
-                          size: 35,
-                          color: AppTheme.kBlueColor,
+                  if (currentLocation != null)
+                    CurrentLocationLayer(
+                      style: LocationMarkerStyle(
+                        marker: DefaultLocationMarker(
+                          color: AppTheme.kWhiteColor,
+                          child: Icon(
+                            Icons.location_pin,
+                            size: 35,
+                            color: AppTheme.kBlueColor,
+                          ),
                         ),
+                        markerSize: const Size(35, 35),
                       ),
-                      markerSize: const Size(35, 35),
                     ),
-                  ),
                   if (mapState is MapLoaded &&
                       mapState?.destination != null &&
                       mapState?.route.isNotEmpty == true)
@@ -545,7 +546,7 @@ class _MapScreenState extends State<MapScreen>
                                 vertical: 12,
                               ),
                             ),
-                            onSubmitted: (location) {
+                            onSubmitted: (location) async {
                               for (var bus in _buses) {
                                 bus['crowdLevel'] = context
                                     .read<MapCubit>()
@@ -556,9 +557,14 @@ class _MapScreenState extends State<MapScreen>
                                       routeId: bus['routeId'] as int,
                                     );
                               }
-                              context.read<MapCubit>().searchDestination(
-                                location.trim(),
-                              );
+                              final success = await context
+                                  .read<MapCubit>()
+                                  .searchDestination(
+                                    location.trim(),
+                                  );
+
+                              // Available buses bottom sheet
+                              if (!success || !context.mounted) return;
                               showModalBottomSheet(
                                 context: context,
                                 isScrollControlled: true,
@@ -658,7 +664,7 @@ class _MapScreenState extends State<MapScreen>
                 ),
               ),
 
-              // Tracker button (kept exactly as you had it)
+              // Tracker button
               if (mapState?.showRoute == true)
                 Positioned(
                   bottom: 30,

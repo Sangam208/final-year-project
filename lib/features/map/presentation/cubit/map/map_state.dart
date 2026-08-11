@@ -20,7 +20,7 @@ final class MapLoaded extends MapState {
   final bool showRoute;
   final bool isTracking;
   final Map<String, dynamic>? selectedBus;
-  final int userLocationIndex; // index in `route` where the user actually is
+  final int userLocationIndex;
 
   MapLoaded({
     this.destination,

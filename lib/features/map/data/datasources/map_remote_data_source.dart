@@ -41,8 +41,16 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
         },
       );
 
+      if (response.statusCode != 200) {
+        throw ServerException('Failed to fetch location');
+      }
+
       if (response.statusCode == 200) {
         final coordinatesData = List<Map<String, dynamic>>.from(response.data);
+
+        if (coordinatesData.isEmpty) {
+          throw ServerException("Location not found");
+        }
 
         // Extract latitude and longitude from response
         final lat = double.parse(coordinatesData[0]['lat']);
@@ -51,6 +59,8 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
         return LatLng(lat, lon);
       }
       return null;
+    } on ServerException {
+      rethrow;
     } catch (e) {
       throw ServerException(e.toString());
     }

@@ -43,7 +43,10 @@ class _AuthScreenState extends State<AuthScreen> {
         body: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
             if (state is AuthFailure) {
-              showToast(state.message);
+              if (state.message.isNotEmpty &&
+                  ModalRoute.of(context)!.isCurrent) {
+                showToast(state.message);
+              }
             } else if (state is AuthSuccess) {
               Navigator.push(
                 context,
