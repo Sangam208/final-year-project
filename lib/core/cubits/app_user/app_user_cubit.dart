@@ -9,8 +9,9 @@ part 'app_user_state.dart';
 class AppUserCubit extends Cubit<AppUserState> {
   AppUserCubit() : super(AppUserInitial());
 
-  void updateUserStatus(User? user) =>
-      emit(user == null ? AppUserInitial() : AppUserLoggedIn(user));
+  void updateUserStatus(User? user) {
+    emit(user == null ? AppUserLoggedOut() : AppUserLoggedIn(user));
+  }
 
   final StreamController<void> _logoutRequestedController =
       StreamController<void>.broadcast();

@@ -172,6 +172,13 @@ class MapCubit extends Cubit<MapState> {
 
   void startBusTracking() {
     final currentState = state;
+    final locationState = _userLocationCubit.state;
+
+    if (locationState is UserLocationFailure) {
+      emit(MapFailure("Current location not available"));
+      return;
+    }
+
     if (currentState is MapLoaded) {
       emit(currentState.copyWith(isTracking: true));
     }

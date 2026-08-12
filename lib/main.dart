@@ -1,3 +1,4 @@
+import 'package:bus_tracker/core/common/widgets/loader.dart';
 import 'package:bus_tracker/core/cubits/app_user/app_user_cubit.dart';
 import 'package:bus_tracker/core/theme/app_theme.dart';
 import 'package:bus_tracker/features/auth/presentation/bloc/auth_bloc.dart';
@@ -56,12 +57,15 @@ class _MyAppState extends State<MyApp> {
       title: 'Bus Tracker',
       theme: AppTheme.themeData,
       debugShowCheckedModeBanner: false,
-      home: BlocSelector<AppUserCubit, AppUserState, bool>(
-        selector: (state) {
-          return state is AppUserLoggedIn;
-        },
-        builder: (context, isLoggedIn) {
-          if (isLoggedIn) {
+      home: BlocBuilder<AppUserCubit, AppUserState>(
+        builder: (context, state) {
+          if (state is AppUserInitial) {
+            return Scaffold(
+              backgroundColor: AppTheme.appColor1,
+              body: const Loader(),
+            );
+          }
+          if (state is AppUserLoggedIn) {
             return const MapScreen();
           }
           return const AuthScreen();

@@ -42,6 +42,9 @@ class _AuthScreenState extends State<AuthScreen> {
         backgroundColor: AppTheme.kAuthColor,
         body: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
+            if (state is AuthLoading) {
+              const Loader();
+            }
             if (state is AuthFailure) {
               if (state.message.isNotEmpty &&
                   ModalRoute.of(context)!.isCurrent) {
@@ -59,92 +62,93 @@ class _AuthScreenState extends State<AuthScreen> {
             return SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text.rich(
-                      TextSpan(
-                        text: 'B u s   T r a c k e r',
-                        style: Theme.of(context).textTheme.titleMedium!
-                            .copyWith(
-                              color: AppTheme.kBlueColor,
-                              fontSize: 35,
+                child: state is AuthLoading
+                    ? Center(child: const Loader())
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text.rich(
+                            TextSpan(
+                              text: 'B u s   T r a c k e r',
+                              style: Theme.of(context).textTheme.titleMedium!
+                                  .copyWith(
+                                    color: AppTheme.kBlueColor,
+                                    fontSize: 35,
+                                  ),
                             ),
-                      ),
-                    ),
+                          ),
 
-                    Lottie.asset(
-                      'assets/lottie/moving_bus.json',
-                      width: double.infinity,
-                    ),
+                          Lottie.asset(
+                            'assets/lottie/moving_bus.json',
+                            width: double.infinity,
+                          ),
 
-                    const SizedBox(height: 16),
+                          const SizedBox(height: 16),
 
-                    Card(
-                      elevation: 3.0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadiusGeometry.circular(
-                          12.0,
-                        ),
-                        side: BorderSide(
-                          color: AppTheme.appColor1,
-                          style: BorderStyle.solid,
-                        ),
-                      ),
-                      color: AppTheme.appColor2,
-                      child: Form(
-                        key: _phoneFormKey,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            children: [
-                              Text(
-                                'E n t e r   P h o n e   N u m b e r',
-                                style:
-                                    Theme.of(
-                                      context,
-                                    ).textTheme.bodyMedium!.copyWith(
-                                      fontWeight: FontWeight.w500,
+                          Card(
+                            elevation: 3.0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadiusGeometry.circular(
+                                12.0,
+                              ),
+                              side: BorderSide(
+                                color: AppTheme.appColor1,
+                                style: BorderStyle.solid,
+                              ),
+                            ),
+                            color: AppTheme.appColor2,
+                            child: Form(
+                              key: _phoneFormKey,
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      'E n t e r   P h o n e   N u m b e r',
+                                      style:
+                                          Theme.of(
+                                            context,
+                                          ).textTheme.bodyMedium!.copyWith(
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                     ),
-                              ),
-                              const SizedBox(
-                                height: 10,
-                              ),
-                              Authfield(
-                                prefixText: '+977 ',
-                                fieldController: _phoneController,
-                                maxLength: 10,
-                                validator: (value) {
-                                  if (value!.isEmpty) {
-                                    return 'Missing Phone Number';
-                                  }
-                                  if (value.length != 10) {
-                                    return 'Phone number should be 10 digits long';
-                                  }
-                                  if (!RegExp(
-                                    r'^(97|98)[0-9]{8}$',
-                                  ).hasMatch(value)) {
-                                    return 'Invalid number. Please try again';
-                                  }
+                                    const SizedBox(
+                                      height: 10,
+                                    ),
+                                    Authfield(
+                                      prefixText: '+977 ',
+                                      fieldController: _phoneController,
+                                      maxLength: 10,
+                                      validator: (value) {
+                                        if (value!.isEmpty) {
+                                          return 'Missing Phone Number';
+                                        }
+                                        if (value.length != 10) {
+                                          return 'Phone number should be 10 digits long';
+                                        }
+                                        if (!RegExp(
+                                          r'^(97|98)[0-9]{8}$',
+                                        ).hasMatch(value)) {
+                                          return 'Invalid number. Please try again';
+                                        }
 
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 15),
-                              AuthButton(
-                                onPressed: () {
-                                  if (state is AuthLoading) null;
-                                  if (_phoneFormKey.currentState!.validate()) {
-                                    context.read<AuthBloc>().add(
-                                      AuthSendOTP(
-                                        '+977${_phoneController.text.trim()}',
-                                      ),
-                                    );
-                                  }
-                                },
-                                child: state is AuthLoading
-                                    ? const Loader()
-                                    : Text(
+                                        return null;
+                                      },
+                                    ),
+                                    const SizedBox(height: 15),
+                                    AuthButton(
+                                      onPressed: () {
+                                        if (state is AuthLoading) null;
+                                        if (_phoneFormKey.currentState!
+                                            .validate()) {
+                                          context.read<AuthBloc>().add(
+                                            AuthSendOTP(
+                                              '+977${_phoneController.text.trim()}',
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      child: Text(
                                         'S e n d   O T P',
                                         style:
                                             Theme.of(
@@ -155,18 +159,18 @@ class _AuthScreenState extends State<AuthScreen> {
                                               color: AppTheme.kWhiteColor,
                                             ),
                                       ),
+                                    ),
+                                    const SizedBox(
+                                      height: 10,
+                                    ),
+                                  ],
+                                ),
                               ),
-                              const SizedBox(
-                                height: 10,
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 16),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                ),
               ),
             );
           },

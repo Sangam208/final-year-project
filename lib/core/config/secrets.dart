@@ -4,4 +4,4 @@ String projectURI = dotenv.env['PROJECT_URI'] ?? '';
 
 String anonKey = dotenv.env['ANON_KEY'] ?? '';
 
-String orsApiKey = dotenv.env['ORS_API_KEY'] ?? '';
+String orsApiKey = dotenv.env['OSR_API_KEY'] ?? '';

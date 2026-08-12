@@ -125,6 +125,20 @@ class MapRemoteDataSourceImpl implements MapRemoteDataSource {
         return routes;
       }
       return [];
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw ServerException("Route service unauthorized");
+      }
+      if (e.response?.statusCode == 429) {
+        throw ServerException(
+          "Too many route requests. Please try again later",
+        );
+      }
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        throw ServerException("Route request timed out");
+      }
+      throw ServerException("Unable to fetch route. Please try again");
     } catch (e) {
       throw ServerException(e.toString());
     }

@@ -11,6 +11,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:lottie/lottie.dart' hide Marker;
 
 class MapScreen extends StatefulWidget {
   static MaterialPageRoute<dynamic> route() => MaterialPageRoute(
@@ -274,6 +275,16 @@ class _MapScreenState extends State<MapScreen>
 
           return Stack(
             children: [
+              if (state is MapLoading)
+                Positioned.fill(
+                  child: Container(
+                    color: AppTheme.kBlackColor.withValues(alpha: 0.35),
+                    child: Center(
+                      child: Lottie.asset("assets/lottie/loading.json"),
+                    ),
+                  ),
+                ),
+
               FlutterMap(
                 mapController: _mapController,
                 options: MapOptions(
@@ -370,7 +381,7 @@ class _MapScreenState extends State<MapScreen>
               ),
 
               // Info card
-              if (mapState?.isTracking == true)
+              if (mapState?.isTracking == true && currentLocation != null)
                 Positioned(
                   top: 120,
                   left: 16,
@@ -557,6 +568,12 @@ class _MapScreenState extends State<MapScreen>
                                       routeId: bus['routeId'] as int,
                                     );
                               }
+
+                              if (currentLocation == null) {
+                                showToast("Current location not available");
+                                return;
+                              }
+
                               final success = await context
                                   .read<MapCubit>()
                                   .searchDestination(
@@ -564,7 +581,10 @@ class _MapScreenState extends State<MapScreen>
                                   );
 
                               // Available buses bottom sheet
-                              if (!success || !context.mounted) return;
+                              if (!success || !context.mounted) {
+                                return;
+                              }
+
                               showModalBottomSheet(
                                 context: context,
                                 isScrollControlled: true,
@@ -598,49 +618,54 @@ class _MapScreenState extends State<MapScreen>
                                             ),
                                           ),
                                           const Divider(),
-                                          Expanded(
-                                            child: state is MapLoading
-                                                ? const Loader()
-                                                : ListView.builder(
-                                                    itemCount: _buses.length,
-                                                    itemBuilder: (context, index) {
-                                                      final bus = _buses[index];
-                                                      return Card(
-                                                        child: ListTile(
-                                                          leading: Icon(
-                                                            Icons
-                                                                .directions_bus_sharp,
-                                                            color:
-                                                                bus['color']
-                                                                    as Color,
-                                                          ),
-                                                          title: Text(
-                                                            bus['name'],
-                                                          ),
-                                                          subtitle: Text(
-                                                            '${bus['time']} min • ${bus['crowdLevel']} crowd',
-                                                          ),
-                                                          trailing: const Icon(
-                                                            Icons
-                                                                .arrow_forward_ios,
-                                                          ),
-                                                          onTap: () {
-                                                            context
-                                                                .read<
-                                                                  MapCubit
-                                                                >()
-                                                                .confirmRouteSelection(
-                                                                  bus,
-                                                                );
-                                                            Navigator.pop(
-                                                              context,
+                                          state is MapLoading
+                                              ? const Loader()
+                                              : Expanded(
+                                                  child: state is MapLoading
+                                                      ? const Loader()
+                                                      : ListView.builder(
+                                                          itemCount:
+                                                              _buses.length,
+                                                          itemBuilder: (context, index) {
+                                                            final bus =
+                                                                _buses[index];
+                                                            return Card(
+                                                              child: ListTile(
+                                                                leading: Icon(
+                                                                  Icons
+                                                                      .directions_bus_sharp,
+                                                                  color:
+                                                                      bus['color']
+                                                                          as Color,
+                                                                ),
+                                                                title: Text(
+                                                                  bus['name'],
+                                                                ),
+                                                                subtitle: Text(
+                                                                  '${bus['time']} min • ${bus['crowdLevel']} crowd',
+                                                                ),
+                                                                trailing:
+                                                                    const Icon(
+                                                                      Icons
+                                                                          .arrow_forward_ios,
+                                                                    ),
+                                                                onTap: () {
+                                                                  context
+                                                                      .read<
+                                                                        MapCubit
+                                                                      >()
+                                                                      .confirmRouteSelection(
+                                                                        bus,
+                                                                      );
+                                                                  Navigator.pop(
+                                                                    context,
+                                                                  );
+                                                                },
+                                                              ),
                                                             );
                                                           },
                                                         ),
-                                                      );
-                                                    },
-                                                  ),
-                                          ),
+                                                ),
                                         ],
                                       ),
                                     ),
@@ -665,7 +690,7 @@ class _MapScreenState extends State<MapScreen>
               ),
 
               // Tracker button
-              if (mapState?.showRoute == true)
+              if (mapState?.showRoute == true && currentLocation != null)
                 Positioned(
                   bottom: 30,
                   left: 16,
@@ -704,7 +729,7 @@ class _MapScreenState extends State<MapScreen>
                       height: 60,
                       width: 60,
                       decoration: BoxDecoration(
-                        color: mapState?.isTracking == true
+                        color: (mapState!.isTracking) == true
                             ? Colors.red
                             : AppTheme.kBlueColor,
                         shape: BoxShape.circle,
@@ -717,7 +742,7 @@ class _MapScreenState extends State<MapScreen>
                         ],
                       ),
                       child: Icon(
-                        mapState?.isTracking == true
+                        (mapState!.isTracking) == true
                             ? Icons.stop
                             : Icons.power_settings_new,
                         color: Colors.white,
