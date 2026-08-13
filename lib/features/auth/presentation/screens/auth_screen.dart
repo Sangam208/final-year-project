@@ -59,12 +59,12 @@ class _AuthScreenState extends State<AuthScreen> {
             }
           },
           builder: (context, state) {
-            return SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: state is AuthLoading
-                    ? Center(child: const Loader())
-                    : Column(
+            return state is AuthLoading
+                ? const Loader()
+                : SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text.rich(
@@ -171,8 +171,8 @@ class _AuthScreenState extends State<AuthScreen> {
                           const SizedBox(height: 16),
                         ],
                       ),
-              ),
-            );
+                    ),
+                  );
           },
         ),
       ),

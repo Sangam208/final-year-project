@@ -1,11 +1,16 @@
-import 'dart:math';
-
 import 'package:bus_tracker/core/common/widgets/loader.dart';
 import 'package:bus_tracker/core/theme/app_theme.dart';
+import 'package:bus_tracker/core/utils/calculate_bearing.dart';
 import 'package:bus_tracker/core/utils/show_toast.dart';
 import 'package:bus_tracker/features/map/presentation/cubit/map/map_cubit.dart';
 import 'package:bus_tracker/features/map/presentation/cubit/user_location/user_location_cubit.dart';
 import 'package:bus_tracker/core/common/widgets/app_drawer.dart';
+import 'package:bus_tracker/features/map/presentation/widgets/cards/bus_bottom_sheet.dart';
+import 'package:bus_tracker/features/map/presentation/widgets/fields/destination_field.dart';
+import 'package:bus_tracker/features/map/presentation/widgets/buttons/geolocator_button.dart';
+import 'package:bus_tracker/features/map/presentation/widgets/buttons/open_end_drawer_button.dart';
+import 'package:bus_tracker/features/map/presentation/widgets/buttons/tracker_button.dart';
+import 'package:bus_tracker/features/map/presentation/widgets/cards/tracking_info_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -39,6 +44,7 @@ class _MapScreenState extends State<MapScreen>
   bool _isAtStop = false;
   String? _dynamicCrowdLevel;
 
+  // Dummy list of available buses
   final List<Map<String, dynamic>> _buses = [
     {
       'name': 'Fast Bus',
@@ -90,6 +96,7 @@ class _MapScreenState extends State<MapScreen>
       duration: const Duration(seconds: 35),
     );
 
+    // Listening to bus animation changes
     _animation = Tween<double>(begin: 0, end: 1).animate(_animationController)
       ..addListener(() {
         setState(() {
@@ -194,16 +201,6 @@ class _MapScreenState extends State<MapScreen>
       });
   }
 
-  double _calculateBearing(LatLng start, LatLng end) {
-    final lat1 = start.latitude * pi / 180;
-    final lat2 = end.latitude * pi / 180;
-    final dLon = (end.longitude - start.longitude) * pi / 180;
-
-    final y = sin(dLon) * cos(lat2);
-    final x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon);
-    return atan2(y, x);
-  }
-
   @override
   void dispose() {
     _animationController.dispose();
@@ -285,6 +282,7 @@ class _MapScreenState extends State<MapScreen>
                   ),
                 ),
 
+              // Map Layer
               FlutterMap(
                 mapController: _mapController,
                 options: MapOptions(
@@ -362,7 +360,7 @@ class _MapScreenState extends State<MapScreen>
                           height: 40,
                           child: Transform.rotate(
                             angle:
-                                _calculateBearing(
+                                calculateBearing(
                                   mapState!.route[_busIndex],
                                   mapState!.route[_busIndex + 1],
                                 ) +
@@ -380,142 +378,41 @@ class _MapScreenState extends State<MapScreen>
                 ],
               ),
 
-              // Info card
+              // Tracker Info card
               if (mapState?.isTracking == true && currentLocation != null)
                 Positioned(
                   top: 120,
                   left: 16,
                   right: 16,
-                  child: Card(
-                    elevation: 6,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.directions_bus,
-                                color: mapState?.selectedBus?['color'],
-                                size: 28,
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                mapState?.selectedBus?['name'] ?? 'Unavailable',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'ETA',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                  Text(
-                                    _eta,
-                                    style: const TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Distance',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                  Text(
-                                    _isAtStop
-                                        ? '---'
-                                        : '~${(_currentDistance / 1000).toStringAsFixed(1)} km',
-                                    style: const TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Crowd',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                  Builder(
-                                    builder: (context) {
-                                      final displayedCrowd = _isAtStop
-                                          ? '---'
-                                          : (_dynamicCrowdLevel ??
-                                                mapState
-                                                    ?.selectedBus?['crowdLevel'] ??
-                                                'Unavailable');
-
-                                      final crowdColor = _isAtStop
-                                          ? Colors.grey
-                                          : displayedCrowd == 'Low'
-                                          ? AppTheme.kGreenColor
-                                          : displayedCrowd == 'High'
-                                          ? AppTheme.kRedColor
-                                          : AppTheme.kOrangeColor;
-
-                                      return Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: crowdColor,
-                                          borderRadius: BorderRadius.circular(
-                                            20,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          displayedCrowd,
-                                          style: TextStyle(
-                                            color: AppTheme.kWhiteColor,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
+                  child: Builder(
+                    builder: (context) {
+                      final displayedCrowd = _isAtStop
+                          ? '---'
+                          : (_dynamicCrowdLevel ??
+                                mapState?.selectedBus?['crowdLevel'] ??
+                                'Unavailable');
+                      return TrackingInfoCard(
+                        busIconColor: mapState?.selectedBus?['color'],
+                        busName:
+                            mapState?.selectedBus?['name'] ?? 'Unavailable',
+                        eta: _eta,
+                        distanceKm: _isAtStop
+                            ? '---'
+                            : '~${(_currentDistance / 1000).toStringAsFixed(1)} km',
+                        displayedCrowd: displayedCrowd,
+                        crowdColor: _isAtStop
+                            ? Colors.grey
+                            : displayedCrowd == 'Low'
+                            ? AppTheme.kGreenColor
+                            : displayedCrowd == 'High'
+                            ? AppTheme.kRedColor
+                            : AppTheme.kOrangeColor,
+                      );
+                    },
                   ),
                 ),
 
-              // Destination field + menu
+              // Destination field + Menu button
               Positioned(
                 top: 40,
                 left: 16,
@@ -523,167 +420,52 @@ class _MapScreenState extends State<MapScreen>
                 child: Row(
                   children: [
                     Expanded(
-                      child: Card(
-                        color: AppTheme.kWhiteColor,
-                        elevation: 4,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(3.0),
-                          child: TextField(
-                            controller: _destinationController,
-                            decoration: InputDecoration(
-                              hintText: 'Enter destination location',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide.none,
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide.none,
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(
-                                  width: 2.0,
-                                  color: AppTheme.kBlueColor,
-                                ),
-                              ),
-                              filled: true,
-                              fillColor: Colors.white,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                            ),
-                            onSubmitted: (location) async {
-                              for (var bus in _buses) {
-                                bus['crowdLevel'] = context
-                                    .read<MapCubit>()
-                                    .predictCrowdLevel(
-                                      hour: bus['hour'] as int,
-                                      dayOfWeek: bus['dayOfWeek'] as int,
-                                      distanceKm: bus['distanceKm'] as double,
-                                      routeId: bus['routeId'] as int,
-                                    );
-                              }
+                      child: DestinationField(
+                        destinationController: _destinationController,
+                        onSubmitted: (location) async {
+                          for (var bus in _buses) {
+                            bus['crowdLevel'] = context
+                                .read<MapCubit>()
+                                .predictCrowdLevel(
+                                  hour: bus['hour'] as int,
+                                  dayOfWeek: bus['dayOfWeek'] as int,
+                                  distanceKm: bus['distanceKm'] as double,
+                                  routeId: bus['routeId'] as int,
+                                );
+                          }
 
-                              if (currentLocation == null) {
-                                showToast("Current location not available");
-                                return;
-                              }
+                          if (currentLocation == null) {
+                            showToast("Current location not available");
+                            return;
+                          }
 
-                              final success = await context
-                                  .read<MapCubit>()
-                                  .searchDestination(
-                                    location.trim(),
-                                  );
-
-                              // Available buses bottom sheet
-                              if (!success || !context.mounted) {
-                                return;
-                              }
-
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                builder: (context) => DraggableScrollableSheet(
-                                  initialChildSize: 0.45,
-                                  minChildSize: 0.35,
-                                  maxChildSize: 0.7,
-                                  expand: false,
-                                  builder: (context, scrollController) => SizedBox(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(10.0),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          ListTile(
-                                            title: Text(
-                                              'Available Buses',
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .titleMedium!
-                                                  .copyWith(
-                                                    color: AppTheme.kBlackColor,
-                                                  ),
-                                            ),
-                                            subtitle: Text(
-                                              'Heading To ${_destinationController.text.trim()}',
-                                              style: Theme.of(
-                                                context,
-                                              ).textTheme.bodyMedium,
-                                            ),
-                                          ),
-                                          const Divider(),
-                                          state is MapLoading
-                                              ? const Loader()
-                                              : Expanded(
-                                                  child: state is MapLoading
-                                                      ? const Loader()
-                                                      : ListView.builder(
-                                                          itemCount:
-                                                              _buses.length,
-                                                          itemBuilder: (context, index) {
-                                                            final bus =
-                                                                _buses[index];
-                                                            return Card(
-                                                              child: ListTile(
-                                                                leading: Icon(
-                                                                  Icons
-                                                                      .directions_bus_sharp,
-                                                                  color:
-                                                                      bus['color']
-                                                                          as Color,
-                                                                ),
-                                                                title: Text(
-                                                                  bus['name'],
-                                                                ),
-                                                                subtitle: Text(
-                                                                  '${bus['time']} min • ${bus['crowdLevel']} crowd',
-                                                                ),
-                                                                trailing:
-                                                                    const Icon(
-                                                                      Icons
-                                                                          .arrow_forward_ios,
-                                                                    ),
-                                                                onTap: () {
-                                                                  context
-                                                                      .read<
-                                                                        MapCubit
-                                                                      >()
-                                                                      .confirmRouteSelection(
-                                                                        bus,
-                                                                      );
-                                                                  Navigator.pop(
-                                                                    context,
-                                                                  );
-                                                                },
-                                                              ),
-                                                            );
-                                                          },
-                                                        ),
-                                                ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                          final success = await context
+                              .read<MapCubit>()
+                              .searchDestination(
+                                location.trim(),
                               );
-                            },
-                          ),
-                        ),
+
+                          // Available buses bottom sheet
+                          if (!success || !context.mounted) {
+                            return;
+                          }
+
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            builder: (context) => BusBottomSheet(
+                              destinationController: _destinationController,
+                              mapState: state,
+                              buses: _buses,
+                            ),
+                          );
+                        },
                       ),
                     ),
-                    IconButton(
+
+                    // Button to open end drawer
+                    OpenEndDrawerButton(
                       onPressed: () => Scaffold.of(context).openEndDrawer(),
-                      icon: Icon(
-                        Icons.menu,
-                        color: AppTheme.kBlackColor,
-                        size: 28.0,
-                      ),
                     ),
                   ],
                 ),
@@ -725,29 +507,13 @@ class _MapScreenState extends State<MapScreen>
                         );
                       }
                     },
-                    child: Container(
-                      height: 60,
-                      width: 60,
-                      decoration: BoxDecoration(
-                        color: (mapState!.isTracking) == true
-                            ? Colors.red
-                            : AppTheme.kBlueColor,
-                        shape: BoxShape.circle,
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 8,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        (mapState!.isTracking) == true
-                            ? Icons.stop
-                            : Icons.power_settings_new,
-                        color: Colors.white,
-                        size: 28,
-                      ),
+                    child: TrackerButton(
+                      trackerColor: (mapState!.isTracking) == true
+                          ? Colors.red
+                          : AppTheme.kBlueColor,
+                      trackerIcon: (mapState!.isTracking) == true
+                          ? Icons.stop
+                          : Icons.power_settings_new,
                     ),
                   ),
                 ),
@@ -756,10 +522,13 @@ class _MapScreenState extends State<MapScreen>
         },
       ),
       endDrawer: const AppDrawer(),
-      floatingActionButton: FloatingActionButton(
+
+      // Geolocator button for relocating user
+      floatingActionButton: GeolocatorButton(
         backgroundColor: AppTheme.kBlueColor,
         onPressed: _userCurrentLocation,
-        child: Icon(Icons.my_location, color: AppTheme.kWhiteColor),
+        icon: Icons.my_location,
+        iconColor: AppTheme.kWhiteColor,
       ),
     );
   }

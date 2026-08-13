@@ -35,8 +35,11 @@ class _OtpScreenState extends State<OtpScreen> {
 
   int timeLeft = 59;
 
+  Timer? _timer;
+
   @override
   void dispose() {
+    _timer?.cancel();
     _otpController.dispose();
     super.dispose();
   }
@@ -48,9 +51,14 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   void _startCountDown() {
-    Timer.periodic(
+    _timer?.cancel();
+    _timer = Timer.periodic(
       Duration(seconds: 1),
       (timer) {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
         if (timeLeft > 0) {
           setState(() {
             timeLeft--;

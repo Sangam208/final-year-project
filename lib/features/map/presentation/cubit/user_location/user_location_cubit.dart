@@ -38,7 +38,7 @@ class UserLocationCubit extends Cubit<UserLocationState> {
       // Get current position first
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
+          accuracy: LocationAccuracy.high,
           timeLimit: Duration(seconds: 6),
         ),
       );
