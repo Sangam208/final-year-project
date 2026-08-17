@@ -1,5 +1,6 @@
 import 'package:bus_tracker/core/config/secrets.dart';
 import 'package:bus_tracker/core/cubits/app_user/app_user_cubit.dart';
+import 'package:bus_tracker/core/network/connection_checker.dart';
 import 'package:bus_tracker/features/auth/data/datasource/auth_remote_data_source.dart';
 import 'package:bus_tracker/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:bus_tracker/features/auth/domain/repositories/auth_repository.dart';
@@ -15,6 +16,7 @@ import 'package:bus_tracker/features/map/presentation/cubit/map/map_cubit.dart';
 import 'package:bus_tracker/features/map/presentation/cubit/user_location/user_location_cubit.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
+import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 final serviceLocator = GetIt.instance;
@@ -31,6 +33,14 @@ Future<void> initDepedencies() async {
     )
     ..registerLazySingleton(
       () => AppUserCubit(),
+    )
+    ..registerFactory(
+      () => InternetConnection(),
+    )
+    ..registerFactory<ConnectionChecker>(
+      () => ConnectionCheckerImplementation(
+        serviceLocator(),
+      ),
     )
     ..registerLazySingleton(
       () => UserLocationCubit(),
@@ -49,6 +59,7 @@ void _initAuth() {
     )
     ..registerFactory<AuthRepository>(
       () => AuthRepositoryImpl(
+        serviceLocator(),
         serviceLocator(),
       ),
     )
@@ -79,6 +90,7 @@ void _initAuth() {
         appUserCubit: serviceLocator(),
         currentUser: serviceLocator(),
         userLogOut: serviceLocator(),
+        connectionChecker: serviceLocator(),
       ),
     );
 }
@@ -96,12 +108,14 @@ void _initMap() {
     ..registerFactory<MapRepository>(
       () => MapRepositoryImpl(
         serviceLocator(),
+        serviceLocator(),
       ),
     )
     ..registerLazySingleton(
       () => MapCubit(
         mapRepository: serviceLocator(),
         userLocationCubit: serviceLocator(),
+        connectionChecker: serviceLocator(),
       ),
     );
 }

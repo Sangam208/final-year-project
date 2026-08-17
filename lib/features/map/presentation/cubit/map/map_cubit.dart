@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:bus_tracker/core/network/connection_checker.dart';
 import 'package:bus_tracker/features/map/domain/entities/crowd_data.dart';
 import 'package:bus_tracker/features/map/domain/repositories/map_repository.dart';
 import 'package:bus_tracker/features/map/presentation/cubit/user_location/user_location_cubit.dart';
@@ -12,16 +13,23 @@ part 'map_state.dart';
 class MapCubit extends Cubit<MapState> {
   final MapRepository _mapRepository;
   final UserLocationCubit _userLocationCubit;
+  final ConnectionChecker _connectionChecker;
 
   MapCubit({
     required MapRepository mapRepository,
     required UserLocationCubit userLocationCubit,
+    required ConnectionChecker connectionChecker,
   }) : _mapRepository = mapRepository,
        _userLocationCubit = userLocationCubit,
+       _connectionChecker = connectionChecker,
        super(MapInitial());
 
   Future<bool> searchDestination(String query) async {
     emit(MapLoading());
+    if (!await _connectionChecker.isConnected) {
+      emit(MapFailure('No Internet Connection'));
+      return false;
+    }
 
     final res = await _mapRepository.getCoordinates(query: query);
     return res.fold(
@@ -38,14 +46,17 @@ class MapCubit extends Cubit<MapState> {
   }
 
   Future<void> _getRoute(LatLng destination) async {
+    emit(MapLoading());
+    if (!await _connectionChecker.isConnected) {
+      emit(MapFailure('No Internet Connection'));
+    }
+
     final locationState = _userLocationCubit.state;
     if (locationState is! UserLocationLoaded ||
         locationState.location == null) {
       emit(MapFailure('Current location not available'));
       return;
     }
-
-    emit(MapLoading());
 
     final res = await _mapRepository.getRoutes(
       waypoints: [locationState.location!, destination],
@@ -67,6 +78,10 @@ class MapCubit extends Cubit<MapState> {
   }
 
   Future<void> confirmRouteSelection(Map<String, dynamic> selectedBus) async {
+    if (!await _connectionChecker.isConnected) {
+      emit(MapFailure('No Internet Connection'));
+    }
+
     final currentState = state;
     if (currentState is! MapLoaded) return;
 
@@ -170,7 +185,11 @@ class MapCubit extends Cubit<MapState> {
     return nearest;
   }
 
-  void startBusTracking() {
+  void startBusTracking() async {
+    if (!await _connectionChecker.isConnected) {
+      emit(MapFailure('No Internet Connection'));
+    }
+
     final currentState = state;
     final locationState = _userLocationCubit.state;
 
@@ -184,7 +203,11 @@ class MapCubit extends Cubit<MapState> {
     }
   }
 
-  void stopBusTracking() {
+  void stopBusTracking() async {
+    if (!await _connectionChecker.isConnected) {
+      emit(MapFailure('No Internet Connection'));
+    }
+
     final currentState = state;
     if (currentState is MapLoaded) {
       emit(

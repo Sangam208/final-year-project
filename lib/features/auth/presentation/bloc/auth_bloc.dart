@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:bus_tracker/core/cubits/app_user/app_user_cubit.dart';
+import 'package:bus_tracker/core/network/connection_checker.dart';
 import 'package:bus_tracker/core/usecase/usecase.dart';
 import 'package:bus_tracker/features/auth/domain/entities/user.dart';
 import 'package:bus_tracker/features/auth/domain/usecases/current_user.dart';
@@ -28,6 +29,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required CurrentUser currentUser,
     required AppUserCubit appUserCubit,
     required UserLogout userLogOut,
+    required ConnectionChecker connectionChecker,
   }) : _userSendOTP = userSendOTP,
        _userVerifyOtp = userVerifyOtp,
        _currentUser = currentUser,
