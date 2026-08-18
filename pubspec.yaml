@@ -45,13 +45,13 @@ dependencies:
   flutter_map: ^8.2.2
   geolocator: ^14.0.2
   latlong2: ^0.9.1
-  location: ^8.0.1
   flutter_polyline_points: ^2.1.0
   flutter_map_location_marker: ^10.2.0
   dio: ^5.9.2
   csv: ^8.0.0
   lottie: ^3.3.2
   internet_connection_checker_plus: ^3.1.1
+  location: ^10.0.2
 
 dev_dependencies:
   flutter_test:

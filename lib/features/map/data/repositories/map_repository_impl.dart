@@ -48,9 +48,6 @@ class MapRepositoryImpl implements MapRepository {
   @override
   Future<Either<Failure, List<CrowdDataModel>?>> loadCrowdData() async {
     try {
-      if (!await _connectionChecker.isConnected) {
-        return left(Failure("No Internet Connection"));
-      }
       final res = await _mapRemoteDataSource.loadCrowdData();
       if (res == null) return left(Failure('No crowd data available'));
       return right(res);
