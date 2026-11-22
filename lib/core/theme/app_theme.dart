@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 class AppTheme {
   static Color appColor1 = Colors.grey.shade300;

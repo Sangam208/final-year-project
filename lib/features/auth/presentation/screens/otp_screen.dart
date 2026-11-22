@@ -8,7 +8,7 @@ import 'package:bus_tracker/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:bus_tracker/features/auth/presentation/widgets/auth_button.dart';
 import 'package:bus_tracker/features/auth/presentation/widgets/auth_field.dart';
 import 'package:bus_tracker/features/map/presentation/screens/map_screen.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lottie/lottie.dart';
 

@@ -6,7 +6,7 @@ import 'package:bus_tracker/features/map/presentation/cubit/map/map_cubit.dart';
 import 'package:bus_tracker/features/map/presentation/cubit/user_location/user_location_cubit.dart';
 import 'package:bus_tracker/features/map/presentation/screens/map_screen.dart';
 import 'package:bus_tracker/init_dependencies.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 

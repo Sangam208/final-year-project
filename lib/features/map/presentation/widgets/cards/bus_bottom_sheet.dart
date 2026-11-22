@@ -1,7 +1,7 @@
 import 'package:bus_tracker/core/common/widgets/loader.dart';
 import 'package:bus_tracker/core/theme/app_theme.dart';
 import 'package:bus_tracker/features/map/presentation/cubit/map/map_cubit.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class BusBottomSheet extends StatelessWidget {

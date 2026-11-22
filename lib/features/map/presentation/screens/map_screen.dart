@@ -11,7 +11,7 @@ import 'package:bus_tracker/features/map/presentation/widgets/buttons/geolocator
 import 'package:bus_tracker/features/map/presentation/widgets/buttons/open_end_drawer_button.dart';
 import 'package:bus_tracker/features/map/presentation/widgets/buttons/tracker_button.dart';
 import 'package:bus_tracker/features/map/presentation/widgets/cards/tracking_info_card.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';

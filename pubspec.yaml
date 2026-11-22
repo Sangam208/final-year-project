@@ -53,6 +53,7 @@ dependencies:
   internet_connection_checker_plus: ^3.1.1
   location: ^10.0.2
 
+  material_ui: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

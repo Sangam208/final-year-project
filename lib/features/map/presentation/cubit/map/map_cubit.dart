@@ -4,7 +4,7 @@ import 'package:bus_tracker/core/network/connection_checker.dart';
 import 'package:bus_tracker/features/map/domain/entities/crowd_data.dart';
 import 'package:bus_tracker/features/map/domain/repositories/map_repository.dart';
 import 'package:bus_tracker/features/map/presentation/cubit/user_location/user_location_cubit.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:latlong2/latlong.dart';
 

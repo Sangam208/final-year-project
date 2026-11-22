@@ -1,5 +1,5 @@
 import 'package:bus_tracker/core/cubits/app_user/app_user_cubit.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class AppDrawer extends StatelessWidget {
