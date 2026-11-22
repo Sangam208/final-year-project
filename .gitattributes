@@ -1,4 +1,5 @@
-*.cpp linguist-vendored
-*.html linguist-vendored
-windows/** linguist-vendored
-linux/** linguist-vendored
+*.cpp linguist-vendored=true
+*.html linguist-vendored=true
+android/build/** linguist-generated=true
+linux/** linguist-vendored=true
+windows/** linguist-vendored=true
